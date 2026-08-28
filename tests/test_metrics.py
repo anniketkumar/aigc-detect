@@ -138,19 +138,62 @@ def _cells(aurocs: dict[str, float]) -> list[M.CellMetrics]:
 
 
 def test_robustness_gap_and_worst_case_definitions():
+    """One cell per family here, so family-balanced and flat coincide."""
     cells = _cells({"clean": 0.98, "jpeg_30": 0.60, "blur_2.0": 0.80, "composed_x": 0.50})
     s = M.summarize(cells)
     assert s.clean_auroc == 0.98
     assert s.mean_transformed_auroc == pytest.approx((0.60 + 0.80 + 0.50) / 3)
     assert s.robustness_gap == pytest.approx(0.98 - (0.60 + 0.80 + 0.50) / 3)
+    assert s.mean_transformed_auroc_flat == pytest.approx(s.mean_transformed_auroc)
     assert s.worst_case == 0.50 and s.worst_cell == "composed_x"
     assert s.n_transformed_cells == 3
+    assert s.n_families == 3
 
 
-def test_clean_is_excluded_from_the_transformed_mean():
+def test_headline_gap_is_family_balanced_not_cell_weighted():
+    """The point of the change: four JPEG severities must not outvote one
+    jitter cell. Flat mean = 0.86, family-balanced = 0.55."""
+    cells = _cells({
+        "clean": 1.00,
+        "jpeg_90": 0.98, "jpeg_70": 0.97, "jpeg_50": 0.96, "jpeg_30": 0.95,
+        "jitter_0.2": 0.20,
+    })
+    s = M.summarize(cells)
+    assert s.family_means == pytest.approx({"jpeg": 0.965, "jitter": 0.20})
+    assert s.mean_transformed_auroc == pytest.approx((0.965 + 0.20) / 2)
+    assert s.robustness_gap == pytest.approx(1.0 - 0.5825)
+    # the literal §3.2 flat mean is kept, and is far more flattering here
+    assert s.mean_transformed_auroc_flat == pytest.approx(
+        (0.98 + 0.97 + 0.96 + 0.95 + 0.20) / 5
+    )
+    assert s.robustness_gap_flat < s.robustness_gap
+    assert s.n_families == 2
+
+
+def test_family_balancing_cannot_be_gamed_by_adding_severities():
+    """Adding more cells to a family the model is already good at must not move
+    the headline gap. Under the flat mean it would."""
+    base = {"clean": 1.0, "jpeg_30": 0.9, "jitter_0.2": 0.5}
+    padded = {**base, "jpeg_90": 0.9, "jpeg_70": 0.9, "jpeg_50": 0.9}
+    a, b = M.summarize(_cells(base)), M.summarize(_cells(padded))
+    assert a.robustness_gap == pytest.approx(b.robustness_gap)
+    assert a.robustness_gap_flat != pytest.approx(b.robustness_gap_flat)
+
+
+def test_composed_chains_count_as_one_family():
+    cells = _cells({"clean": 1.0, "jpeg_30": 0.9,
+                    "composed_a": 0.1, "composed_b": 0.3})
+    s = M.summarize(cells)
+    assert set(s.family_means) == {"jpeg", "composed"}
+    assert s.family_means["composed"] == pytest.approx(0.2)
+    assert s.mean_transformed_auroc == pytest.approx((0.9 + 0.2) / 2)
+
+
+def test_clean_is_excluded_from_the_transformed_mean_and_from_families():
     s = M.summarize(_cells({"clean": 0.9, "jpeg_30": 0.9}))
     assert s.mean_transformed_auroc == 0.9
     assert s.robustness_gap == pytest.approx(0.0)
+    assert "clean" not in s.family_means
 
 
 def test_worst_case_spans_all_cells_including_clean():
@@ -170,6 +213,7 @@ def test_single_and_composed_means_are_reported_separately():
 def test_undefined_cells_are_skipped_and_warned_about():
     s = M.summarize(_cells({"clean": 0.9, "jpeg_30": float("nan"), "blur_2.0": 0.7}))
     assert s.mean_transformed_auroc == pytest.approx(0.7)
+    assert not np.isfinite(s.family_means["jpeg"])
     assert s.n_undefined_cells == 1
     assert any("undefined AUROC" in w for w in s.warnings)
 
@@ -219,6 +263,8 @@ def test_markdown_grid_is_complete_and_pairs_clean_with_the_gap():
     # §13: never clean alone
     assert "Clean AUROC" in md and "Robustness gap" in md and "Worst cell" in md
     assert "By family" in md
+    # both the family-balanced headline and the flat §3.2 literal are shown
+    assert "family-balanced" in md and "flat, §3.2 literal" in md
     # the per-cell table is well formed: one row per cell, 8 columns each
     per_cell = md.split("## Per-cell")[1].split("## By family")[0]
     rows = [ln for ln in per_cell.splitlines() if ln.startswith("| `")]

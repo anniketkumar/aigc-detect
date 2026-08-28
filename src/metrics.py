@@ -169,8 +169,14 @@ class GridSummary:
     worst_cell: str = ""
     mean_single_auroc: float = float("nan")
     mean_composed_auroc: float = float("nan")
+    #: Flat (cell-weighted) counterparts of the two headline numbers, kept as
+    #: secondary columns so the §3.2 literal definition stays visible.
+    mean_transformed_auroc_flat: float = float("nan")
+    robustness_gap_flat: float = float("nan")
+    family_means: dict[str, float] = field(default_factory=dict)
     n_cells: int = 0
     n_transformed_cells: int = 0
+    n_families: int = 0
     n_undefined_cells: int = 0
     warnings: list[str] = field(default_factory=list)
 
@@ -186,14 +192,21 @@ def summarize(
 ) -> GridSummary:
     """Reduce per-cell metrics to the §3.2 headline numbers.
 
-    Both aggregates follow §3.2 literally:
+    ``robustness_gap`` is **family-balanced**: the transformed cells are grouped
+    by degradation family, each family's AUROCs are averaged, and the headline
+    averages those seven family means. §3.2 as written specifies a flat mean over
+    cells, which silently weights the grid by severity count -- JPEG contributes
+    4 of the 14 single cells and ``jitter`` contributes 1, so a detector could
+    cut the flat gap by a third by being good at JPEG alone while staying
+    fragile to everything else. That is the opposite of what the metric is for.
+    Composed chains count as one family, matching :attr:`transforms.Cell.family`.
 
-    * ``robustness_gap`` averages over every non-clean cell, composed chains
-      included. This is unweighted, so the mean is dominated by whichever
-      family happens to contribute the most severities (JPEG, with 4 of 14
-      single cells). Per-family means are in the CSV if you need to reweight.
-    * ``worst_case`` is the min over *all* cells including clean, as written.
-      Clean should never be the argmin; if it is, that is worth seeing.
+    The flat mean is kept as ``mean_transformed_auroc_flat`` /
+    ``robustness_gap_flat`` so the literal §3.2 number stays on the table and
+    the two can be compared.
+
+    ``worst_case`` is the min over *all* cells including clean, as §3.2 writes
+    it. Clean should never be the argmin; if it is, that is worth seeing.
     """
     rows = [c if isinstance(c, CellMetrics) else CellMetrics(**dict(c)) for c in cells]
     if not rows:
@@ -217,10 +230,25 @@ def summarize(
         vals = [r.auroc for r in sel if np.isfinite(r.auroc)]
         return float(np.mean(vals)) if vals else float("nan")
 
-    s.mean_transformed_auroc = _mean(transformed)
+    # Family-balanced headline: mean of family means, so a family with four
+    # severities does not outvote one with a single severity.
+    fam_groups: dict[str, list[CellMetrics]] = {}
+    for r in transformed:
+        fam_groups.setdefault(r.family or r.kind, []).append(r)
+    s.family_means = {
+        name: _mean(group) for name, group in sorted(fam_groups.items())
+    }
+    usable = [v for v in s.family_means.values() if np.isfinite(v)]
+    s.n_families = len(s.family_means)
+    s.mean_transformed_auroc = float(np.mean(usable)) if usable else float("nan")
+    s.robustness_gap = s.clean_auroc - s.mean_transformed_auroc
+
+    # Secondary: the literal §3.2 flat mean over cells.
+    s.mean_transformed_auroc_flat = _mean(transformed)
+    s.robustness_gap_flat = s.clean_auroc - s.mean_transformed_auroc_flat
+
     s.mean_single_auroc = _mean([r for r in transformed if r.kind == "single"])
     s.mean_composed_auroc = _mean([r for r in transformed if r.kind == "composed"])
-    s.robustness_gap = s.clean_auroc - s.mean_transformed_auroc
 
     finite = [r for r in rows if np.isfinite(r.auroc)]
     if finite:
@@ -255,18 +283,27 @@ def markdown_grid(
         "| Metric | Value |",
         "|---|---|",
         f"| Clean AUROC | {_f(summary.clean_auroc)} |",
-        f"| Mean transformed AUROC | {_f(summary.mean_transformed_auroc)} |",
+        f"| Mean transformed AUROC (family-balanced) | "
+        f"{_f(summary.mean_transformed_auroc)} |",
         f"| **Robustness gap** ↓ | **{_f(summary.robustness_gap)}** |",
         f"| **Worst cell AUROC** ↑ | **{_f(summary.worst_case)}** "
         f"(`{summary.worst_cell}`) |",
+        f"| Mean transformed AUROC (flat, §3.2 literal) | "
+        f"{_f(summary.mean_transformed_auroc_flat)} |",
+        f"| Robustness gap (flat) | {_f(summary.robustness_gap_flat)} |",
         f"| Mean AUROC, single transforms | {_f(summary.mean_single_auroc)} |",
         f"| Mean AUROC, composed chains | {_f(summary.mean_composed_auroc)} |",
         f"| Cells | {summary.n_cells} "
-        f"({summary.n_transformed_cells} transformed) |",
+        f"({summary.n_transformed_cells} transformed, "
+        f"{summary.n_families} families) |",
         "",
-        "`robustness_gap = AUROC(clean) − mean(AUROC(transformed cells))`, "
-        "lower is better. `worst_case = min(AUROC)` over all cells, higher is "
-        "better. Clean AUROC is never to be read on its own (§13).",
+        "`robustness_gap = AUROC(clean) − mean(family mean AUROC)`, lower is "
+        "better. The headline weights each degradation family equally rather "
+        "than each cell, so being good at JPEG alone (4 of 14 single cells) "
+        "cannot mask fragility elsewhere; the flat cell-weighted mean §3.2 "
+        "specifies is reported beside it. `worst_case = min(AUROC)` over all "
+        "cells, higher is better. Clean AUROC is never to be read on its own "
+        "(§13).",
         "",
         "## Per-cell",
         "",

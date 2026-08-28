@@ -1,14 +1,26 @@
 {
   "summary": {
     "clean_auroc": 0.5427500000000001,
-    "mean_transformed_auroc": 0.4997416666666666,
-    "robustness_gap": 0.04300833333333348,
+    "mean_transformed_auroc": 0.49935029761904765,
+    "robustness_gap": 0.04339970238095242,
     "worst_case": 0.47135000000000005,
     "worst_cell": "composed_resize0.25+blur0.5+jpeg30",
     "mean_single_auroc": 0.4984053571428571,
     "mean_composed_auroc": 0.50441875,
+    "mean_transformed_auroc_flat": 0.4997416666666666,
+    "robustness_gap_flat": 0.04300833333333348,
+    "family_means": {
+      "blur": 0.4771666666666667,
+      "center_crop": 0.48674999999999996,
+      "composed": 0.50441875,
+      "jitter": 0.5023249999999999,
+      "jpeg": 0.49601249999999997,
+      "noise": 0.5154916666666667,
+      "resize": 0.5132875
+    },
     "n_cells": 19,
     "n_transformed_cells": 18,
+    "n_families": 7,
     "n_undefined_cells": 0,
     "warnings": ""
   },
@@ -52,7 +64,7 @@
     "cache_dir": null,
     "cache_hits": 0,
     "cache_misses": 0,
-    "elapsed_s": 8.77,
+    "elapsed_s": 8.5,
     "command": "python -m src.evaluate --model dummy_random --manifest data/fixtures/dummy/manifest.csv --out results/dummy --name dummy_random --quiet",
     "python": "3.12.10",
     "platform": "Windows-11-10.0.26200-SP0"

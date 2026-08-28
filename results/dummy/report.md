@@ -9,14 +9,16 @@ Reproduce: `python -m src.evaluate --model dummy_random --manifest data/fixtures
 | Metric | Value |
 |---|---|
 | Clean AUROC | 0.5428 |
-| Mean transformed AUROC | 0.4997 |
-| **Robustness gap** ↓ | **0.0430** |
+| Mean transformed AUROC (family-balanced) | 0.4994 |
+| **Robustness gap** ↓ | **0.0434** |
 | **Worst cell AUROC** ↑ | **0.4714** (`composed_resize0.25+blur0.5+jpeg30`) |
+| Mean transformed AUROC (flat, §3.2 literal) | 0.4997 |
+| Robustness gap (flat) | 0.0430 |
 | Mean AUROC, single transforms | 0.4984 |
 | Mean AUROC, composed chains | 0.5044 |
-| Cells | 19 (18 transformed) |
+| Cells | 19 (18 transformed, 7 families) |
 
-`robustness_gap = AUROC(clean) − mean(AUROC(transformed cells))`, lower is better. `worst_case = min(AUROC)` over all cells, higher is better. Clean AUROC is never to be read on its own (§13).
+`robustness_gap = AUROC(clean) − mean(family mean AUROC)`, lower is better. The headline weights each degradation family equally rather than each cell, so being good at JPEG alone (4 of 14 single cells) cannot mask fragility elsewhere; the flat cell-weighted mean §3.2 specifies is reported beside it. `worst_case = min(AUROC)` over all cells, higher is better. Clean AUROC is never to be read on its own (§13).
 
 ## Per-cell
 

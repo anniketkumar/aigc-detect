@@ -458,9 +458,12 @@ def main(argv: list[str] | None = None) -> int:
 
     print(
         f"\nclean AUROC        {summary.clean_auroc:.4f}\n"
-        f"mean transformed   {summary.mean_transformed_auroc:.4f}\n"
+        f"mean transformed   {summary.mean_transformed_auroc:.4f}"
+        f"   (family-balanced over {summary.n_families} families)\n"
         f"robustness_gap     {summary.robustness_gap:+.4f}   (lower is better)\n"
-        f"worst_case         {summary.worst_case:.4f}   ({summary.worst_cell})"
+        f"worst_case         {summary.worst_case:.4f}   ({summary.worst_cell})\n"
+        f"  flat mean        {summary.mean_transformed_auroc_flat:.4f}"
+        f"   gap {summary.robustness_gap_flat:+.4f}   (§3.2 literal, secondary)"
     )
     for w in summary.warnings:
         print(f"[warn] {w}")
