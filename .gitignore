@@ -1,0 +1,20 @@
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ipynb_checkpoints/
+*.egg-info/
+.venv/
+venv/
+
+# Data and derived artifacts are not committed. results/ IS committed (§13).
+data/*
+!data/.gitkeep
+!data/manifests/
+data/manifests/*
+!data/manifests/.gitkeep
+*.npy
+*.pt
+*.ckpt
+
+# Transformed-image cache written by src/evaluate.py --cache-dir
+.cache_transforms/
