@@ -19,7 +19,7 @@ from typing import Sequence
 import torch
 from PIL import Image
 
-from src.models.clip_backbone import ClipBackbone
+from src.models.clip_backbone import BACKBONE, ClipBackbone
 from src.models.semantic_head import LinearHead
 
 __all__ = ["CLIPLinearScorer"]
@@ -37,7 +37,7 @@ class CLIPLinearScorer:
         self.device = device
         self.backbone = ClipBackbone(
             device=device,
-            backbone=state.get("backbone", "ViT-B-16"),
+            backbone=state.get("backbone") or BACKBONE,
             pretrained=state.get("pretrained", "openai"),
         )
         self.head = LinearHead(int(state["embed_dim"])).to(device)

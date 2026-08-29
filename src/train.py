@@ -6,6 +6,14 @@ Plain BCE, no augmentation, on features from ``scripts/cache_features.py`` --
 this is the deliberate control the Phase 1 harness is meant to show collapsing
 under jpeg=30 / resize=0.25, not a serious model (HANDOFF.md, PLAN.md §5).
 
+Trains to convergence: 300 epochs with early stopping on val AUROC
+(``--patience``, default 30). The first Phase 3 run used a flat 50 and val
+AUROC was still climbing monotonically at the last epoch, so best-val
+selection returned the final epoch and never actually selected anything. An
+unconverged control would make Phase 4's augmentation gain read larger than it
+is; the whole loop costs seconds, so there is no reason to accept that
+confound.
+
 Reads ``{features_dir}/{split}/{embeddings.npy,labels.npy,meta.json}`` for
 ``--train-split`` (default ``train``) and, if present, ``--val-split``
 (default ``val``) for model selection by AUROC. Writes a checkpoint consumed
@@ -27,6 +35,7 @@ import torch
 import torch.nn as nn
 from sklearn.metrics import roc_auc_score
 
+from src.models.clip_backbone import BACKBONE, PRETRAINED
 from src.models.semantic_head import LinearHead
 
 
@@ -44,7 +53,8 @@ def train(
     out: Path,
     train_split: str = "train",
     val_split: str = "val",
-    epochs: int = 50,
+    epochs: int = 300,
+    patience: int = 30,
     lr: float = 1e-3,
     weight_decay: float = 1e-4,
     batch_size: int = 256,
@@ -82,6 +92,8 @@ def train(
 
     best_val_auroc = -1.0
     best_state = None
+    best_epoch = -1
+    stopped_early = False
     history = []
     rng = np.random.default_rng(seed)
     t0 = time.time()
@@ -112,6 +124,7 @@ def train(
             val_auroc = roc_auc_score(y_val, val_probs)
             if val_auroc > best_val_auroc:
                 best_val_auroc = val_auroc
+                best_epoch = epoch
                 best_state = {k: v.clone() for k, v in head.state_dict().items()}
         else:
             val_auroc = None
@@ -121,18 +134,29 @@ def train(
         print(f"epoch {epoch:3d}  loss {epoch_loss:.4f}  train_auroc {train_auroc:.4f}"
               + (f"  val_auroc {val_auroc:.4f}" if val_auroc is not None else ""))
 
+        # Early stopping needs a val split to select on; without one every
+        # epoch looks like an improvement and stopping would be arbitrary.
+        if Xv is not None and patience > 0 and epoch - best_epoch >= patience:
+            stopped_early = True
+            print(f"[stop] no val improvement in {patience} epochs "
+                  f"(best {best_val_auroc:.4f} at epoch {best_epoch})")
+            break
+
     state_dict = best_state if best_state is not None else head.state_dict()
 
     out.parent.mkdir(parents=True, exist_ok=True)
     torch.save({
         "state_dict": state_dict,
-        "backbone": meta.get("backbone", "ViT-B-16"),
-        "pretrained": meta.get("pretrained", "openai"),
+        "backbone": meta.get("backbone") or BACKBONE,
+        "pretrained": meta.get("pretrained") or PRETRAINED,
         "embed_dim": embed_dim,
         "config": {
             "train_split": train_split, "val_split": val_split, "epochs": epochs,
-            "lr": lr, "weight_decay": weight_decay, "batch_size": batch_size,
-            "seed": seed, "best_val_auroc": None if best_val_auroc < 0 else best_val_auroc,
+            "patience": patience, "lr": lr, "weight_decay": weight_decay,
+            "batch_size": batch_size, "seed": seed,
+            "best_val_auroc": None if best_val_auroc < 0 else best_val_auroc,
+            "best_epoch": None if best_epoch < 0 else best_epoch,
+            "epochs_run": len(history), "stopped_early": stopped_early,
         },
     }, out)
 
@@ -141,6 +165,9 @@ def train(
         "n_train": n,
         "n_val": None if Xv is None else int(Xv.shape[0]),
         "best_val_auroc": None if best_val_auroc < 0 else round(best_val_auroc, 4),
+        "best_epoch": None if best_epoch < 0 else best_epoch,
+        "epochs_run": len(history),
+        "stopped_early": stopped_early,
         "final_train_auroc": round(history[-1]["train_auroc"], 4),
         "elapsed_s": round(time.time() - t0, 1),
     }
@@ -154,7 +181,10 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--train-split", default="train")
     ap.add_argument("--val-split", default="val")
     ap.add_argument("--out", type=Path, default=Path("runs/baseline.pt"))
-    ap.add_argument("--epochs", type=int, default=50)
+    ap.add_argument("--epochs", type=int, default=300)
+    ap.add_argument("--patience", type=int, default=30,
+                    help="stop after N epochs with no val-AUROC improvement; "
+                         "0 disables. Needs a val split.")
     ap.add_argument("--lr", type=float, default=1e-3)
     ap.add_argument("--weight-decay", type=float, default=1e-4)
     ap.add_argument("--batch-size", type=int, default=256)
@@ -164,7 +194,7 @@ def main(argv: list[str] | None = None) -> int:
 
     train(
         a.features_dir, a.out, train_split=a.train_split, val_split=a.val_split,
-        epochs=a.epochs, lr=a.lr, weight_decay=a.weight_decay,
+        epochs=a.epochs, patience=a.patience, lr=a.lr, weight_decay=a.weight_decay,
         batch_size=a.batch_size, device=a.device, seed=a.seed,
     )
     return 0

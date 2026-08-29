@@ -48,13 +48,19 @@ def cache_split(
     manifest: Path,
     out: Path,
     device: str = "cpu",
-    backbone: str = "ViT-B-16",
-    pretrained: str = "openai",
+    backbone: str | None = None,
+    pretrained: str | None = None,
     batch_size: int = 64,
     limit: int | None = None,
     progress: bool = True,
 ) -> dict:
-    from src.models.clip_backbone import ClipBackbone
+    from src.models.clip_backbone import BACKBONE, PRETRAINED, ClipBackbone
+
+    # Resolved here, not as an argument default, so the import stays deferred:
+    # one place decides the backbone (src/models/clip_backbone.py) and no
+    # caller can silently pin a stale one.
+    backbone = backbone or BACKBONE
+    pretrained = pretrained or PRETRAINED
 
     df = _load_manifest(manifest)
     if limit is not None:
@@ -125,8 +131,10 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--out", type=Path, required=True,
                      help="output directory, e.g. data/features/train")
     ap.add_argument("--device", default="cpu")
-    ap.add_argument("--backbone", default="ViT-B-16")
-    ap.add_argument("--pretrained", default="openai")
+    ap.add_argument("--backbone", default=None,
+                    help="default: src.models.clip_backbone.BACKBONE")
+    ap.add_argument("--pretrained", default=None,
+                    help="default: src.models.clip_backbone.PRETRAINED")
     ap.add_argument("--batch-size", type=int, default=64)
     ap.add_argument("--limit", type=int, default=None,
                      help="cache only the first N rows (smoke testing)")

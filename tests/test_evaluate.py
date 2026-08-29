@@ -340,12 +340,13 @@ def _smoke_ckpt_for(name: str, tmp_path) -> str | None:
         return None
     import torch
 
+    from src.models.clip_backbone import BACKBONE
     from src.models.semantic_head import LinearHead
 
     ckpt = tmp_path / "smoke_clip.pt"
     torch.save({
         "state_dict": LinearHead(512).state_dict(),
-        "backbone": "ViT-B-16",
+        "backbone": BACKBONE,
         "pretrained": "",
         "embed_dim": 512,
     }, ckpt)

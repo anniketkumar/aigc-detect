@@ -7,6 +7,15 @@ is what makes feature caching valid at all (§ Workflow: once cached, every
 later head experiment runs in seconds with no GPU).
 
 L/14 is a later swap if there's slack, not a Phase 3 decision.
+
+The ``-quickgelu`` suffix is not cosmetic. OpenAI's CLIP weights were trained
+with QuickGELU, and plain ``ViT-B-16`` builds a nn.GELU model -- right weights,
+wrong activation, silently degraded features. The first Phase 3 run embedded
+the whole corpus that way and open_clip warned about it three times
+(``results/baseline/colab_run.ipynb``, cell 12). open_clip registers
+``<name>-quickgelu`` for exactly those pretrained tags carrying
+``quick_gelu=True``, so this pair is the supported spelling; ``embed_dim``
+stays 512 either way.
 """
 
 from __future__ import annotations
@@ -17,7 +26,7 @@ import numpy as np
 import torch
 from PIL import Image
 
-BACKBONE = "ViT-B-16"
+BACKBONE = "ViT-B-16-quickgelu"
 PRETRAINED = "openai"
 
 
