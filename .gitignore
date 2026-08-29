@@ -1,12 +1,12 @@
-__pycache__/
-*.py[cod]
-.pytest_cache/
-.ipynb_checkpoints/
-*.egg-info/
-.venv/
-venv/
+# ---------------------------------------------------------------------------
+# Large binaries and derived artifacts. results/ IS committed (PLAN.md §13):
+# results/*/grid.csv, results/*/report.md and results/*.md are submission
+# deliverables and must stay readable on GitHub.
+# ---------------------------------------------------------------------------
 
-# Data and derived artifacts are not committed. results/ IS committed (§13).
+# Datasets (~1 GB) are never committed. NOTE: this is "data/*" and not "data/"
+# on purpose -- a bare directory pattern stops git descending into data/, which
+# makes the negations below impossible.
 data/*
 !data/.gitkeep
 !data/manifests/
@@ -20,9 +20,27 @@ data/manifests/*
 !data/forbidden/
 data/forbidden/*
 !data/forbidden/blocklist.json
-*.npy
-*.pt
-*.ckpt
+
+runs/
+results/**/cache/
 
 # Transformed-image cache written by src/evaluate.py --cache-dir
 .cache_transforms/
+
+*.npy
+*.pt
+*.pth
+*.ckpt
+*.zip
+*.parquet
+
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.ipynb_checkpoints/
+.venv/
+venv/
+
+.env
+.DS_Store
