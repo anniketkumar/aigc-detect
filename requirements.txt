@@ -1,5 +1,6 @@
 # Pinned to what is installed and verified in this environment (Python 3.12).
-# Phase 1 (eval harness) needs only: numpy, pandas, pillow, scikit-learn, tqdm, pyyaml.
+# Phase 1 (eval harness) needs only: numpy, pandas, pillow, scikit-learn, tqdm,
+# pyyaml -- plus requests, which pytest pulls in at collection time (below).
 # The rest are pinned now because §2 fixes the final dependency set; they are
 # first imported in Phase 3+. Nothing here is unused by the final pipeline.
 
@@ -20,6 +21,13 @@ opencv-python==5.0.0.93
 # --- reporting / demo ---
 matplotlib==3.10.9
 gradio==6.19.0
+
+# --- scripts: data acquisition and audit ---
+# Imported at module level by scripts/download_data.py, build_blocklist.py,
+# fetch_audit_sample.py, audit_resample.py and bench_throughput.py. Not
+# optional: tests/test_audit_primitives.py imports one of those scripts, so
+# without this the whole suite fails at collection on a clean install.
+requests==2.34.2
 
 # --- dev ---
 pytest==9.1.1
