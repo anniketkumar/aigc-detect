@@ -28,6 +28,13 @@ gradio==6.19.0
 # optional: tests/test_audit_primitives.py imports one of those scripts, so
 # without this the whole suite fails at collection on a clean install.
 requests==2.34.2
+# download_data.py reads parquet row groups directly (pyarrow) over an fsspec
+# HTTP filesystem; bench_throughput.py's parquet probe additionally needs
+# huggingface_hub for HfFileSystem. Found missing during Phase 3 Colab setup --
+# a fresh clone could not run the download step without these.
+pyarrow==25.0.1
+fsspec==2026.6.0
+huggingface_hub==1.27.0
 
 # --- dev ---
 pytest==9.1.1
