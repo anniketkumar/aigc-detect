@@ -25,8 +25,8 @@ AUROC 1.0 on file size alone.
 
 ## Non-negotiable
 - The WildFake reference subset (4998 COCO val2017 + 8843 DALL·E Advanced) must
-  never enter training. Filenames are renamed and cannot be trusted, so the
-  enforcement is not uniform across the two halves:
+  never enter training. **Disqualification risk.** Filenames are renamed and
+  cannot be trusted, and enforcement is not uniform across the two halves:
   - COCO val2017 — content hash. `data/forbidden/blocklist.json` carries 5000
     sha256 + 5000 phash (all of val2017, a superset of the 4998), so a
     re-encoded copy is still caught.
@@ -35,7 +35,6 @@ AUROC 1.0 on file size alone.
     in the blocklist. Enforced instead by a source-registry denylist
     (`tests/test_manifest.py::test_no_dalle_derived_source_in_the_registry`),
     which is the weaker guarantee — it blocks a declared source, not content.
-  Disqualification risk.
 - At least one generator stays fully held out of train.
 - Both are blocking tests. Don't skip them to unblock yourself.
 
