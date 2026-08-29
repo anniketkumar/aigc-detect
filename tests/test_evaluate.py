@@ -327,13 +327,42 @@ def test_a_model_returning_the_wrong_number_of_scores_is_caught(fixture_manifest
         E.run_grid(Broken(), df, T.build_cells()[:1], progress=False)
 
 
+def _smoke_ckpt_for(name: str, tmp_path) -> str | None:
+    """A throwaway checkpoint for registry entries that require one.
+
+    ``clip_linear`` cannot be instantiated without weights (unlike the dummy
+    models), so the registry-wide smoke test below needs *something* to pass
+    as ``--ckpt``. ``pretrained=""`` builds a randomly-initialized CLIP
+    backbone -- same code path as the real thing, but no network weight
+    download, so this stays a fast, offline test.
+    """
+    if name != "clip_linear":
+        return None
+    import torch
+
+    from src.models.semantic_head import LinearHead
+
+    ckpt = tmp_path / "smoke_clip.pt"
+    torch.save({
+        "state_dict": LinearHead(512).state_dict(),
+        "backbone": "ViT-B-16",
+        "pretrained": "",
+        "embed_dim": 512,
+    }, ckpt)
+    return str(ckpt)
+
+
 def test_every_registered_model_runs_over_the_whole_grid(fixture_manifest, tmp_path):
     from src.models.base import MODEL_REGISTRY
 
     for name in MODEL_REGISTRY:
-        E.main(["--model", name, "--manifest", str(fixture_manifest),
+        args = ["--model", name, "--manifest", str(fixture_manifest),
                 "--out", str(tmp_path / name), "--quiet", "--no-scores",
-                "--limit", "20"])
+                "--limit", "20"]
+        ckpt = _smoke_ckpt_for(name, tmp_path)
+        if ckpt is not None:
+            args += ["--ckpt", ckpt]
+        E.main(args)
         df = pd.read_csv(tmp_path / name / "grid.csv")
         assert len(df) == 19 and df["auroc"].notna().all(), name
 
