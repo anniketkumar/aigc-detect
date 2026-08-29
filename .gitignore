@@ -12,6 +12,14 @@ data/*
 !data/manifests/
 data/manifests/*
 !data/manifests/.gitkeep
+
+# The forbidden-subset blocklist IS committed: 490 KB, and without it the
+# PLAN.md section 4.3.2 assertions pass vacuously on a fresh clone. Rebuilding
+# it means re-downloading COCO val2017 (797 MB), which the zip rule below keeps
+# out of the repo.
+!data/forbidden/
+data/forbidden/*
+!data/forbidden/blocklist.json
 *.npy
 *.pt
 *.ckpt

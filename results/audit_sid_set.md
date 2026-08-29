@@ -1,8 +1,17 @@
 # Phase 2 leakage audit
 
-Sample: `data\audit_sample\sid_set\sample_manifest.csv` — 1800 images, 981 MB.
+> **Sampling correction (see `results/audit_sampling_verification.md`).** The
+> sample below was drawn from the *head of the validation split* -- shards 0-5 of
+> 34, row groups 0-2 of 9 -- and touched none of the 249 `train` shards. That was
+> not a valid draw. It has since been re-done: 20,000 rows at 189 independent
+> positions across the whole train split. **Every headline finding replicates**
+> (`is_1024sq` 0.9814 -> 0.9807, `megapixels` 0.9814 -> 0.9802), and the parquet
+> is not class-ordered (class share varies by at most 1.6 pp across deciles of
+> file position). The numbers here stand; the method that produced them does not.
 
-## Headline — what a metadata-only classifier gets
+Sample: `data\audit_sample\sid_set\sample_manifest.csv` -- 1800 images, 981 MB.
+
+## Headline -- what a metadata-only classifier gets
 
 AUROC of a *single* metadata feature, direction-agnostic, computed with the Phase 1 metric code. 0.5 = no leak, 1.0 = the feature alone separates the classes perfectly.
 

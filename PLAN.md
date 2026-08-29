@@ -154,33 +154,153 @@ produces AUROC ≈ 0.5 in every cell and a complete markdown table.
 
 ## 4. Phase 2 — Data
 
-### 4.1 Sources
+> **Rewritten 2026-08-29** after the leakage audit and the source verification
+> that followed it. The original §4 named SID_Set, WildFake and CIFAKE; all
+> three are gone from the training path and the reasons are recorded below.
+> Every repo path here was checked against the live Hub, not against a README.
+> See `results/audit_sid_set.md`, `results/audit_sampling_verification.md`,
+> `results/data_stats.md`.
 
-| Dataset | Use | Note |
-|---|---|---|
-| SID_Set (HF: `saberzl/SID_Set`) | primary train | high-res, real / synthetic / tampered splits |
-| WildFake (ModelScope) | train + generator diversity | **exclude the reference subset** |
-| CIFAKE (Kaggle) | optional hard low-res test only | 32×32 — resize transforms are meaningless here, do not train on it |
+### 4.0 Why the original plan changed
 
-### 4.2 Manifest
+The audit found that on raw SID_Set a classifier **reading no pixels at all**
+scores 0.98 AUROC: the AI class is 100% PNG and 100% 1024×1024, the real class
+is 100% JPEG across 667 shapes, and ICC profiles appear in 40.6% of reals and 0%
+of AI. That sample was itself drawn from the head of one split, so it was
+re-done across the whole train split — the findings replicated to within 0.001.
 
-`scripts/… → data/manifests/{train,val,test}.csv` with columns:
+Three consequences:
+
+1. **Volume is not the constraint; generator diversity is.** A linear probe on
+   frozen CLIP features saturates around 5–10k images per class, so a second
+   generator is worth far more than a second 50k images from the first. Target:
+   ~2k per generator across six, streamed.
+2. **Every image goes through one canonical decode path** (§4.4), so container,
+   geometry and metadata carry zero information.
+3. **Tampered images are excluded from training** and retained as a third eval
+   axis. A real photo with an inpainted region is not a generated image, and
+   folding it into class 1 changes what the detector is being asked to do.
+
+### 4.1 Sources — `src/data/sources.py`
+
+18,200 images, 19.3 GB transferred, **1.7 GB resident** after normalization.
+
+**AI (6 generators + 1 unseen), all 1024px native:**
+
+| Generator | Repo | Family | Quota | Train? |
+|---|---|---|---|---|
+| SDXL | `bitmind/bm-subnet-stable-diffusion-xl-base-1.0` | sdxl | 2000 | yes |
+| Mobius | `bitmind/bm-subnet-mobius` | sdxl-derivative | 2000 | yes |
+| RealVisXL V4.0 | `bitmind/bm-subnet-RealVisXL_V4.0` | sdxl-derivative | 2000 | yes |
+| Aura | `bitmind/bm-aura-imagegen` | aura | 2000 | yes |
+| MidJourney | `bitmind/JourneyDB` | midjourney | 2000 | **held out** |
+| Gemini (nano-banana) | `bitmind/nano-banana` | gemini | 2000 | **held out** |
+| FLUX.1-dev | `saberzl/SID_Set` (validation, label 1) | flux | 800 | **held out** |
+
+**Real (3 sources, deliberately):**
+
+| Source | Repo | Character | Quota |
+|---|---|---|---|
+| OpenImagesV7 | `saberzl/SID_Set` (validation, label 0) | amateur web | 1800 |
+| Megalith-Flickr | `bitmind/megalith-small` | amateur Flickr | 1800 |
+| Unsplash | `wtcherr/unsplash_5k` | **professional** | 1800 |
+
+Three real sources, not one, is the fix for the audit's semantic finding: the AI
+class is polished and cinematic while SID_Set's real class is amateur. A model
+can score well by learning "is this well lit", and that shortcut survives JPEG,
+so `robustness_gap` would look excellent while the model had learned nothing
+about generation. Unsplash is the control — professional photography, labelled
+real — so "polished" no longer predicts "fake".
+
+**Datasets ruled out, and why:**
+
+| Dataset | Verdict |
+|---|---|
+| GenImage (`bitmind/GenImage_*`) | **Unusable.** Every mirrored generator is fixed low-res — BigGAN 128², ADM/glide/VQDM all 256², 100% of sampled rows. Real sources are 768–1152. A 512 crop yields zero images; a 224 crop makes resolution a perfect class signal again, merely inverted. The only fix would be upscaling one class — the exact per-class resampling signature §4.4 exists to prevent. |
+| WildFake (ModelScope) | ~700 GB of zips, no streaming path. Its *file lists* were used to locate the forbidden reference subset (`results/audit_wildfake_paths.md`). No images pulled. |
+| SID_Set as primary train | Demoted to eval-only. Single-generator (FLUX.1-dev) and the subject of the whole audit. |
+| CIFAKE | 32×32. Below the crop floor, and the resize cells are meaningless there. |
+| Pexels | **Dropped after measurement.** 18 KB/image at source, so its normalized files came out at a median 16 KB against 66–103 KB elsewhere — separable from every other real source by file size alone at AUROC **1.0000**, and it pushed real-vs-AI `n_bytes` to 0.7120. Replaced by Unsplash: 0.5017. Caught by the §4.5 regression test. |
+
+### 4.2 Manifest — `src/data/manifest.py`
+
+`data/manifests/{train,val,test}.csv`, exactly:
 
 ```
 image_path, label (0=real,1=ai), generator, source_dataset, split
 ```
 
+plus `detail.csv` alongside carrying hashes, source geometry and duplicate
+cluster ids, so the required schema stays clean without discarding the audit
+trail.
+
 ### 4.3 Splitting rules — non-negotiable
 
-1. **Hold out entire generators** from training (e.g. leave out two diffusion
-   families). Cross-generator AUROC is a stronger claim than cross-transform and
-   costs nothing to obtain.
-2. **Assert** at manifest-build time that no image from the forbidden WildFake
-   reference subset appears in `train.csv`. Hash-check it. Write the assertion as
-   a test. This is a disqualification risk, not a style point.
-3. Balance real/fake per split. Log the counts into `results/data_stats.md`.
+1. **Hold out entire generators.** Three, not two: MidJourney, Gemini and
+   FLUX.1-dev — three distinct families, all closed commercial generators, which
+   is the realistic deployment case. They go to `test` whole; not even a val
+   slice, or hyperparameter choice leaks across the boundary carrying the claim.
+2. **No forbidden image in `train.csv`**, enforced by **content hash**, not path
+   — WildFake renames COCO files to `img000000.jpg`. Two layers: sha256 (exact)
+   and pHash ≤ 6 (survives the re-encode WildFake applied). Blocklist built by
+   `scripts/build_blocklist.py`: **5,000 COCO val2017 hashes**.
+   **Known gap:** DALL·E Advanced (8,843 imgs) has no public standalone
+   distribution and is not hashed. Recorded in the blocklist's `gaps` field,
+   surfaced in `data_stats.md`, and mitigated by a registry-level DALL·E
+   denylist test.
+3. **No near-duplicate spans a split boundary.** pHash + LSH banding, clusters
+   assigned whole. 8 bands × 8 bits makes the bucketing *exact* at threshold 6
+   (pigeonhole needs `n_bands > threshold`; an earlier 4-band version was wrong
+   and a brute-force test caught it).
+4. **Class balance per split**, logged to `results/data_stats.md`. Train/val are
+   bounded to 25–75% AI; test skews AI because the holdout generators land there.
 
----
+### 4.4 Normalization — the canonical decode path
+
+`src/data/imageio.py` → `src/data/normalize.py`. Identical for both classes:
+
+```
+decode → apply EXIF orientation → strip ALL metadata (EXIF, ICC, text, XMP)
+       → RGB → [class 1 only: synthetic first JPEG generation]
+       → fixed 512×512 CROP at native resolution, no resampling
+       → one JPEG pass, q95 4:2:0, both classes
+```
+
+- **Crop, not resize.** Resizing applies different scale factors per class, and
+  a resampling kernel leaves a signature in the exact band the Phase 5 artifact
+  branch reads.
+- **Crop offsets are multiples of 16** (the 4:2:0 MCU), so the inherited DCT
+  grid phase cannot differ by class.
+- **Random crop location, not centre.** Generators centre their subject; a
+  centre crop would frame subject for one class and background for the other.
+- **Constant quality, not distribution-matched.** A constant has AUROC 0.5 by
+  construction — provable, not merely measured.
+- **Double JPEG.** Real photos arrive as JPEG and leave as JPEG: two
+  generations. AI images arrive as PNG, so they get a synthetic first generation
+  at a quality *and chroma subsampling* sampled from the real class's measured
+  distribution (median q93, spread 68–100). Both classes end at two.
+
+### 4.5 The audit as a regression test
+
+`tests/test_normalization_audit.py` re-runs the metadata probe on the normalized
+manifest and asserts every channel is under 0.60 AUROC:
+
+| channel | raw SID_Set | normalized |
+|---|---|---|
+| `container_is_png` | 0.7574 | **0.5000** (constant) |
+| `megapixels` / `is_1024sq` | 0.9814 | **0.5000** (constant) |
+| `is_square` | 0.9806 | **0.5000** (constant) |
+| `height` | 0.8966 | **0.5000** (constant) |
+| `has_icc` | 0.7027 | **0.5000** (constant) |
+| `n_bytes` | 0.6037 | **0.5357** |
+| `n_exif_tags`, `n_text_chunks` | 0.5000 | **0.5000** (constant) |
+
+Twelve of thirteen channels are *constant* after normalization, which is a
+stronger guarantee than a measured bound — there is no sample size at which they
+could come out otherwise. `n_bytes` cannot be pinned: at fixed quality it
+measures compressibility, which is a property of the pixels rather than the
+container. It is bounded instead, and per-source fingerprinting by file size is
+asserted separately.
 
 ## 5. Phase 3 — Baseline (deliberately dumb)
 
@@ -378,7 +498,14 @@ classifier and a deployable system — and it doubles as your Feasibility answer
 
 ## 14. Open items
 
-- [ ] Confirm submission deadline → set phase cutoffs
-- [ ] Confirm available compute → decides ViT-L/14 fine-tuning vs strict linear probe
-- [ ] Decide which generators to hold out
+- [x] Confirm submission deadline → **under 72 h from 2026-08-29.**
+- [x] Confirm available compute → **Google Colab**, ~50 GB disk. Strict
+      linear probe; no backbone fine-tuning fits the budget.
+- [x] Decide which generators to hold out → **MidJourney, Gemini
+      (nano-banana), FLUX.1-dev** — three families, all closed commercial
+      (§4.1).
+- [ ] **Run the download on Colab, not locally.** Measured here: 1.25 MB/s,
+      so 19 GB is 4+ hours and there is only 9.5 GB free. On Colab it is
+      minutes. `python -m scripts.bench_throughput` re-measures it there
+      first.
 - [ ] Devpost draft, README, YouTube upload (allow more time than feels necessary — presentation + impact is 30% of the score)

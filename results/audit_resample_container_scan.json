@@ -1,0 +1,176 @@
+{
+ "per_window": [
+  {
+   "split": "train",
+   "shard": 216,
+   "off": 238669186,
+   "png": 2,
+   "jpg": 0
+  },
+  {
+   "split": "train",
+   "shard": 66,
+   "off": 465559731,
+   "png": 1,
+   "jpg": 2
+  },
+  {
+   "split": "train",
+   "shard": 200,
+   "off": 280899603,
+   "png": 1,
+   "jpg": 0
+  },
+  {
+   "split": "validation",
+   "shard": 8,
+   "off": 140850744,
+   "png": 1,
+   "jpg": 1
+  },
+  {
+   "split": "validation",
+   "shard": 13,
+   "off": 34436096,
+   "png": 1,
+   "jpg": 2
+  },
+  {
+   "split": "train",
+   "shard": 122,
+   "off": 433196023,
+   "png": 1,
+   "jpg": 2
+  },
+  {
+   "split": "train",
+   "shard": 91,
+   "off": 295580692,
+   "png": 0,
+   "jpg": 4
+  },
+  {
+   "split": "train",
+   "shard": 235,
+   "off": 492770793,
+   "png": 0,
+   "jpg": 5
+  },
+  {
+   "split": "train",
+   "shard": 98,
+   "off": 8538581,
+   "png": 1,
+   "jpg": 2
+  },
+  {
+   "split": "validation",
+   "shard": 9,
+   "off": 51074951,
+   "png": 1,
+   "jpg": 0
+  },
+  {
+   "split": "train",
+   "shard": 247,
+   "off": 387388509,
+   "png": 1,
+   "jpg": 1
+  },
+  {
+   "split": "train",
+   "shard": 10,
+   "off": 452020538,
+   "png": 2,
+   "jpg": 0
+  },
+  {
+   "split": "train",
+   "shard": 103,
+   "off": 215116758,
+   "png": 1,
+   "jpg": 0
+  },
+  {
+   "split": "train",
+   "shard": 212,
+   "off": 382314402,
+   "png": 1,
+   "jpg": 0
+  },
+  {
+   "split": "train",
+   "shard": 77,
+   "off": 443835273,
+   "png": 0,
+   "jpg": 4
+  },
+  {
+   "split": "train",
+   "shard": 194,
+   "off": 422469306,
+   "png": 0,
+   "jpg": 2
+  },
+  {
+   "split": "validation",
+   "shard": 24,
+   "off": 359712016,
+   "png": 1,
+   "jpg": 2
+  },
+  {
+   "split": "train",
+   "shard": 124,
+   "off": 336687036,
+   "png": 1,
+   "jpg": 4
+  },
+  {
+   "split": "train",
+   "shard": 107,
+   "off": 1613544,
+   "png": 1,
+   "jpg": 0
+  },
+  {
+   "split": "validation",
+   "shard": 4,
+   "off": 329509747,
+   "png": 0,
+   "jpg": 4
+  },
+  {
+   "split": "train",
+   "shard": 149,
+   "off": 265987599,
+   "png": 1,
+   "jpg": 0
+  },
+  {
+   "split": "train",
+   "shard": 130,
+   "off": 445563087,
+   "png": 1,
+   "jpg": 1
+  },
+  {
+   "split": "validation",
+   "shard": 32,
+   "off": 466790693,
+   "png": 1,
+   "jpg": 0
+  },
+  {
+   "split": "train",
+   "shard": 227,
+   "off": 179850564,
+   "png": 2,
+   "jpg": 0
+  }
+ ],
+ "total": {
+  "png": 22,
+  "jpg": 36
+ }
+}

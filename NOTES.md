@@ -117,3 +117,101 @@ failure to the exactly correct cell. That is the end-to-end check.
   Do not tune anything against fixture numbers.
 - `pandas 3.0.3` and `opencv 5.0` are both very recent majors. If Colab pins
   older ones, `requirements.txt` will need a compatible lower bound.
+
+---
+
+## Phase 2 — data (done)
+
+Built: `src/data/{imageio,normalize,resample,sources,manifest}.py`,
+`scripts/{download_data,build_blocklist,make_data_stats,audit_resample,bench_throughput,make_load_fixtures}.py`,
+18 real image fixtures, 156 new tests. **261 passing, 1 self-documenting skip.**
+
+### Was the audit's sampling valid? No. Were its findings? Yes.
+
+`fetch_audit_sample.py` loops `range(shards) × range(row_groups)` — it read
+**validation shards 0–5, row groups 0–2**, and none of the 249 `train` shards.
+0.75% of one split, all from the head.
+
+Re-drawn: 20,000 rows at 189 independent positions across the whole train split
+(HF datasets-server `/rows`, which serves arbitrary offsets for ~nothing).
+
+| | audit | re-sample |
+|---|---|---|
+| `is_1024sq` | 0.9814 | **0.9807** |
+| `megapixels` | 0.9814 | **0.9802** |
+| `is_square` | 0.9806 | **0.9787** |
+
+Class share varies by at most **1.6 pp** across deciles of file position, so the
+parquet is not class-ordered — the specific failure mode that would have
+invalidated everything. Container format checked separately by counting magic
+bytes in random 1.5 MB windows (Snappy declines to compress already-compressed
+image data, so the files sit verbatim in the parquet): PNG share 0.326 against a
+predicted ~0.35, at a cost of 27 MB. Full write-up in
+`results/audit_sampling_verification.md`.
+
+### Things that did not survive contact with the data
+
+- **GenImage is unusable.** Every mirrored generator is fixed low-res: BigGAN
+  128², ADM/glide/VQDM all 256², 100% of sampled rows. Real sources are
+  768–1152. A 512 crop yields zero images; a 224 crop makes resolution a perfect
+  class signal again, inverted. Replaced with six 1024px generators, each
+  verified by sampling real row dimensions.
+- **Pexels reintroduced the leak it was hired to remove.** Added as the
+  polished-photography control for the semantic confound. Its sources are 18 KB
+  at 768p, so normalized files came out at a median 16 KB against 66–103 KB
+  elsewhere: separable from every other real source by **file size alone at
+  AUROC 1.0000**, and real-vs-AI `n_bytes` went to 0.7120. Swapped for Unsplash
+  (130 KB/image): `n_bytes` 0.5017, source signature 0.5108. The task-F
+  regression test caught this, which is the entire argument for writing it.
+- **Both SID_Set sources were reading the same rows.** `saberzl/SID_Set` puts
+  real, full_synthetic and tampered in one split. The downloader stamped each
+  source's own label on every row it read, so "OpenImagesV7" came back with a
+  median geometry of 1024×1024 when SID_Set's real class is 3.85% square — about
+  two thirds of the supposedly-real images were synthetic. Caught by the source
+  geometry table in `data_stats.md`; fixed with a per-row `label_values` filter
+  (`rejected: {'wrong_class': 83}` confirms it fires).
+
+### Bugs the tests caught in my own code
+
+- **LSH banding was not exact.** 4 bands × 16 bits, claimed exact at threshold 6
+  by pigeonhole. Wrong: 6 bit errors spread 2+2+1+1 touch all four bands. The
+  condition is `n_bands > threshold`, so it needs ≥ 7. Now 8 × 8. The
+  brute-force comparison test found three missed pairs out of 20 planted.
+- **Pillow "recovers" a badly truncated PNG as a 100% black image.** No
+  exception, correct dimensions, valid RGB — a solid black rectangle would have
+  entered training carrying a real label. Added a constant-row padding measure;
+  recoveries above 50% padding are rejected, and the fraction is recorded either
+  way.
+- **The near-duplicate fixture was unphotographic.** Three low-frequency
+  sinusoids leave most of pHash's 64 DCT coefficients near zero, so their signs
+  are noise and a plain 2× rescale moved the hash 12 bits. Looked like the
+  threshold-6 calibration failing; was the fixture. Measured on the real
+  corpus — unrelated pairs ≥ 20 bits, JPEG q30 and 4× rescale both move it 0 —
+  and rebuilt the fixture with 14 components to match.
+
+### Decisions
+
+| Question | Decision |
+|---|---|
+| Crop size | 512. Every source clears it; 224 would make a real-source crop 6% of the frame against 87% for a 256px generator — a scene-scale confound as bad as the original. |
+| Crop offset | Multiple of 16 (the 4:2:0 MCU), so inherited DCT grid phase cannot differ by class. |
+| Crop location | Random (seeded), not centre. Generators centre their subject; a centre crop frames subject for one class and background for the other. |
+| Final JPEG quality | Constant q95 4:2:0. A constant has AUROC 0.5 *by construction* — provable rather than measured. |
+| AI first generation | Sampled from the real class's measured (quality, subsampling) joint — median q93, spread 68–100, subsampling 40/26/31% across 4:2:0 / 4:2:2 / 4:4:4. Bimodal, so sampled rather than fitted. |
+| Resume key | Source content hash, not row position. Re-sharding a repo would otherwise silently duplicate everything. |
+| Raw files | Never written. Row groups are normalized in memory; only the 512² JPEG lands. 19 GB transferred → 1.7 GB resident. |
+
+### Known gaps
+
+- **DALL·E Advanced (8,843 images) is not hashed.** It exists only inside
+  WildFake's ~700 GB of ModelScope zips. COCO val2017 is hashed in full (5,000
+  sha256 + 5,000 pHash). The gap is recorded in the blocklist's `gaps` field,
+  printed by `manifest.build`, and mitigated by a registry-level DALL·E denylist
+  test. Residual risk is low — no source in the registry is DALL·E-derived — but
+  it is a gap, not a solved problem.
+- **pHash does not catch crops.** A 10%-per-side crop moves the hash ~20 bits,
+  indistinguishable from an unrelated image. Inherited from the audit's own
+  calibration and unchanged.
+- **The n_bytes bound is weak at the current corpus size.** At 140 real + 160 AI
+  the null SD is 0.033, so 0.60 is 3.0σ. The test skips with that message rather
+  than implying more confidence than the sample supports.

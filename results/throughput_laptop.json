@@ -1,0 +1,65 @@
+{
+  "host": {
+    "platform": "Windows-11-10.0.26200-SP0",
+    "python": "3.12.10",
+    "cpu_count": 8,
+    "in_colab": false,
+    "in_kaggle": false,
+    "torch": "2.13.0+cpu",
+    "cuda": false
+  },
+  "when": "2026-08-29 03:59:41",
+  "cdn": {
+    "SID_Set": {
+      "file_bytes": 477663216,
+      "chunk_mb": 25.2,
+      "reps": 3,
+      "mbps_median": 1.39,
+      "mbps_all": [
+        1.62,
+        1.01,
+        1.39
+      ]
+    },
+    "GenImage_BigGAN": {
+      "file_bytes": 652468032,
+      "chunk_mb": 25.2,
+      "reps": 3,
+      "mbps_median": 1.12,
+      "mbps_all": [
+        1.12,
+        1.21,
+        0.84
+      ]
+    }
+  },
+  "parquet": {
+    "SID_Set": {
+      "footer_read_s": 2.48,
+      "row_groups": 1,
+      "rows": 100,
+      "uncompressed_mb": 55.9,
+      "seconds": 43.15,
+      "mbps": 1.3,
+      "images_per_s": 2.3
+    },
+    "GenImage_BigGAN": {
+      "footer_read_s": 2.52,
+      "row_groups": 1,
+      "rows": 100,
+      "uncompressed_mb": 3.3,
+      "seconds": 12.77,
+      "mbps": 0.26,
+      "images_per_s": 7.8
+    }
+  },
+  "disk": {
+    "path": "C:\\Users\\ANIKET~1\\AppData\\Local\\Temp\\aigc_bench",
+    "seq_write_mbps": 576.5,
+    "small_files_per_s": 1613.2,
+    "small_file_ms": 0.62,
+    "free_gb": 9.5,
+    "total_gb": 283.6
+  },
+  "headline_cdn_mbps": 1.25
+}

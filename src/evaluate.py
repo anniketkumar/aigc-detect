@@ -31,6 +31,7 @@ from PIL import Image
 from tqdm import tqdm
 
 from src import metrics as M
+from src.data import imageio as IIO
 from src import transforms as T
 from src.models.base import MODEL_REGISTRY, load_model
 
@@ -102,13 +103,23 @@ def image_id_for(path: str) -> str:
 # --------------------------------------------------------------------------- #
 
 def _load_image(path: str) -> Image.Image | None:
-    try:
-        img = Image.open(path)
-        img.load()
-        return img
-    except Exception as exc:  # unreadable, truncated, or not an image
-        print(f"[warn] could not read {path}: {exc}", file=sys.stderr)
+    """Decode via the shared hardened path (``src/data/imageio``).
+
+    Deliberately the *same* function the manifest builder uses. If the harness
+    kept its own ``Image.open`` the two would disagree about EXIF orientation
+    and about whether a truncated file is usable, and the manifest would then
+    describe a dataset the harness never actually scores.
+
+    ``min_side=None``: the size floor is a manifest-build policy. At scoring
+    time a too-small image is still an image that needs a number.
+    """
+    res = IIO.load_image(path, min_side=None)
+    if res.image is None:
+        print(f"[warn] could not read {path}: {res.reason}", file=sys.stderr)
         return None
+    if res.status == IIO.RECOVERED_TRUNCATED:
+        print(f"[warn] {path}: {res.reason}", file=sys.stderr)
+    return res.image
 
 
 class TransformCache:
