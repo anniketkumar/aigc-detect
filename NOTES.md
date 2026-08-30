@@ -216,7 +216,7 @@ predicted ~0.35, at a cost of 27 MB. Full write-up in
   the null SD is 0.033, so 0.60 is 3.0σ. The test skips with that message rather
   than implying more confidence than the sample supports.
 
-## Phase 4 — augmentation (sampler + Colab cells built; run pending)
+## Phase 4 — augmentation (run landed: modest, one-target win)
 
 Phase 3 landed at `e7dced2`: `results/baseline/` (clean AUROC 0.9810,
 AUROC `robustness_gap` 0.0099 — under its own null SD, i.e. noise) and
@@ -252,6 +252,32 @@ Two targets, both from the Phase 3 TPR analysis, both checked in the notebook:
 
 The ablation reports both, not just the family-averaged gap.
 
+### Result: `results/aug/`, `results/tpr_analysis_aug/`
+
+|  | baseline | aug | read |
+|---|---:|---:|---|
+| Clean AUROC | 0.9810 | 0.9779 | dips slightly, as §6 predicts |
+| AUROC `robustness_gap` | 0.0099 | 0.0077 | both under the 0.0108 null SD — still noise, not a signal either way |
+| **TPR@FPR=5% gap (primary target)** | **0.0530** [0.0369, 0.0632] | **0.0402** [0.0253, 0.0511] | **improved ~24%**, right direction, but the CIs overlap substantially — not a clean statistical win, a real one |
+| TPR@FPR=1% gap | 0.0391 [-0.0017, 0.1066] | 0.0429 [-0.0217, 0.0931] | still crosses zero both runs — too noisy at 1% to read, as Phase 3 already found |
+| Worst cell (AUROC) | 0.9484 `composed_resize0.25+blur0.5+jpeg30` | 0.9526 `noise_0.1` | worst-cell AUROC improved, and the *identity* of the worst cell moved off the composed chain the augmentation targets most directly |
+| Worst cell (TPR@5%) | 0.7308 (same composed chain) | 0.7875 (same composed chain) | **+0.0567 on the single hardest cell** — the biggest per-cell win in the grid |
+
+**Per-generator TPR spread (secondary target) — did not close:**
+
+| | baseline | aug | read |
+|---|---:|---:|---|
+| clean TPR@1% spread (max−min) | 0.3821 (Aura 0.893 − FLUX 0.511) | 0.3758 (Aura 0.913 − FLUX 0.538) | ~flat, FLUX.1-dev stays the floor |
+| clean TPR@5% spread (max−min) | 0.1365 (MidJourney 0.974 − FLUX 0.838) | 0.1445 (MidJourney 0.976 − Gemini 0.832) | **slightly widened** — Gemini's clean TPR@5% dropped (0.8635→0.8315) enough to replace FLUX as the new floor |
+
+So: augmentation bought the primary target a real ~24%-ish reduction and the
+single worst cell in the whole grid a +0.057 TPR@5% gain, exactly where §6
+says the lever should matter most (the worst composed chain). It did not
+close the per-generator inequality the notebook was built to check
+separately — the average moved, FLUX.1-dev and now Gemini did not move with
+it. Both `results/aug/scores.csv` and `results/tpr_analysis_aug/` are
+committed, so this is re-checkable without re-running Colab.
+
 ### What it is
 
 A RandAugment-style sampler over the same six families as the Phase 1 eval
@@ -280,12 +306,13 @@ in the dataloader). Writes `degradation.npy` (N·K, 12) alongside the usual
 three files; `paths.json` entries become `"{path}#aug{i}"` so every embedding
 still traces to a source file for error analysis.
 
-### Still pending
+### Still open
 
-- The Colab cells are drafted but not yet executed — `results/aug/` and
-  `results/tpr_analysis_aug/` don't exist yet.
-- `K=4` and `--augment-seed 0` are the plan's defaults, untuned — nothing to
-  tune against until the first augmented run is in.
-- The Phase 4 cells assume the *same* Colab session as Phase 3 (they reuse
-  `data/corpus`, ephemeral on `/content`); starting fresh means re-running
-  Cell 2's download first.
+- `K=4` and `--augment-seed 0` were the plan's untuned defaults going in.
+  Given the per-generator spread didn't close, a next step worth trying before
+  calling augmentation done is a higher `K` or a `p_apply` biased toward the
+  composed/heavy-severity end specifically for FLUX.1-dev-hard cases — but
+  that's a hypothesis, not yet tested.
+- The per-generator spread not closing is itself worth carrying into the
+  error-analysis writeup (§11): FLUX.1-dev and Gemini are still the floor,
+  same as Phase 3, just with a different one of the two in last place.
