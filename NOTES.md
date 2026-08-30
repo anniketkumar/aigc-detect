@@ -230,13 +230,27 @@ the downloaded corpus: `src/data/augment.py` (25 tests,
 `tests/test_augment.py`); the `--augment-copies`/`--augment-seed` extension to
 `scripts/cache_features.py` (8 tests, `tests/test_cache_features.py`, CLIP
 backbone stubbed — no network). Now added, once Phase 3's real paths were
-known: eleven cells appended to `scripts/colab_setup.ipynb` — cache
+known: thirteen cells appended to `scripts/colab_setup.ipynb` — cache
 `train` with `--augment-copies 4`, reuse the clean `val` cache as-is, retrain
 into `{DRIVE_ROOT}/checkpoints/aug.pt`, evaluate into `results/aug/` on the
 same held-out `test` split, then `scripts/tpr_gap_analysis.py --run aug
---run "baseline (post-fix)"` into `results/tpr_analysis_aug/` so the ablation
-gets both the AUROC gap and the TPR@FPR=5% gap side by side, matching Phase
-3's finding that AUROC alone is the wrong number to report the gap on.
+--run baseline` into `results/tpr_analysis_aug/`.
+
+Two targets, both from the Phase 3 TPR analysis, both checked in the notebook:
+
+- **TPR@FPR=5% robustness gap** — currently 0.0530, 95% CI [0.0369, 0.0632],
+  tight enough to be a real signal (unlike the AUROC gap, 0.0099, which sits
+  under its own null SD of 0.0108). This is the primary target — the
+  family-averaged operating-point cost of degradation, and the number
+  augmentation exists to move.
+- **Per-generator TPR spread** — currently 0.511 (FLUX.1-dev, held out) to
+  0.893 (Aura) clean TPR@1%, a spread AUROC's tight 0.9697–0.9949 per-generator
+  band completely hides (`results/baseline/per_generator.md`). Checked
+  separately so a Phase 4 win can't just mean "the easy generators got easier
+  while FLUX.1-dev stayed put" — narrowing the average gap while widening this
+  spread would not be the win it looks like.
+
+The ablation reports both, not just the family-averaged gap.
 
 ### What it is
 
