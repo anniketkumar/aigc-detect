@@ -18,6 +18,21 @@ Writes into ``--out`` (a directory):
 Images that fail to decode are skipped (with a warning), not fatal -- a corrupt
 file already happened once in Phase 2 and does not get to cost a whole caching
 run here either.
+
+Phase 4 (PLAN.md §6): ``--augment-copies K`` embeds ``K`` randomly augmented
+copies of every image instead of the image itself -- option (a) of "either
+precompute embeddings for K augmented copies per image, or run CLIP live in
+the dataloader". Feature caching and *online* augmentation cannot coexist
+(caching only pays off because the backbone never runs again), so this is the
+augmented alternative to a plain run, not an addition to it: pass one or the
+other. With ``--augment-copies K`` the outputs above hold ``N*K`` rows
+(``paths.json`` entries become ``"{image_path}#aug{copy_index}"`` so each
+embedding still traces to a source file) and one extra array is written:
+
+    degradation.npy  (N*K, 12) float32 -- src.data.augment.DegradationLabel
+                      vectors, one per embedded copy; free supervision for a
+                      future degradation head (PLAN.md §7.2), unused today
+                      (Phase 5 is cut, HANDOFF.md) but cheap to keep.
 """
 
 from __future__ import annotations
@@ -53,8 +68,13 @@ def cache_split(
     batch_size: int = 64,
     limit: int | None = None,
     progress: bool = True,
+    augment_copies: int = 0,
+    augment_seed: int = 0,
 ) -> dict:
     from src.models.clip_backbone import BACKBONE, PRETRAINED, ClipBackbone
+
+    if augment_copies < 0:
+        raise ValueError(f"augment_copies must be >= 0, got {augment_copies}")
 
     # Resolved here, not as an argument default, so the import stays deferred:
     # one place decides the backbone (src/models/clip_backbone.py) and no
@@ -72,10 +92,14 @@ def cache_split(
     t0 = time.time()
     clip = ClipBackbone(device=device, backbone=backbone, pretrained=pretrained)
     print(f"  backbone ready in {time.time() - t0:.1f}s, embed_dim={clip.embed_dim}")
+    if augment_copies:
+        from src.data.augment import iter_augmented_copies
+        print(f"  augmenting: {augment_copies} copies/image, seed={augment_seed}")
 
     feats: list[np.ndarray] = []
     labels: list[int] = []
     paths: list[str] = []
+    degradations: list[np.ndarray] = []
     n_failed = 0
 
     bar = tqdm(total=len(df), desc="embed", unit="img", disable=not progress)
@@ -88,9 +112,18 @@ def cache_split(
                 print(f"[warn] could not read {path}, skipping", file=sys.stderr)
                 n_failed += 1
                 continue
-            imgs.append(img)
-            ok_labels.append(int(label))
-            ok_paths.append(str(path))
+            if augment_copies:
+                for copy_idx, (aug_img, aug_label) in enumerate(
+                    iter_augmented_copies(img, str(path), augment_copies, base_seed=augment_seed)
+                ):
+                    imgs.append(aug_img)
+                    ok_labels.append(int(label))
+                    ok_paths.append(f"{path}#aug{copy_idx}")
+                    degradations.append(aug_label.to_vector())
+            else:
+                imgs.append(img)
+                ok_labels.append(int(label))
+                ok_paths.append(str(path))
         if imgs:
             feats.append(clip.embed(imgs))
             labels.extend(ok_labels)
@@ -108,6 +141,9 @@ def cache_split(
     np.save(out / "embeddings.npy", embeddings)
     np.save(out / "labels.npy", labels_arr)
     (out / "paths.json").write_text(json.dumps(paths), encoding="utf-8")
+    if augment_copies:
+        degradation_arr = np.stack(degradations, axis=0).astype(np.float32)
+        np.save(out / "degradation.npy", degradation_arr)
     meta = {
         "manifest": str(manifest),
         "backbone": backbone,
@@ -117,6 +153,8 @@ def cache_split(
         "n_failed": n_failed,
         "n_real": int((labels_arr == 0).sum()),
         "n_ai": int((labels_arr == 1).sum()),
+        "augment_copies": augment_copies,
+        "augment_seed": augment_seed if augment_copies else None,
         "elapsed_s": round(time.time() - t0, 1),
     }
     (out / "meta.json").write_text(json.dumps(meta, indent=2), encoding="utf-8")
@@ -139,12 +177,19 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--limit", type=int, default=None,
                      help="cache only the first N rows (smoke testing)")
     ap.add_argument("--quiet", action="store_true")
+    ap.add_argument("--augment-copies", type=int, default=0,
+                     help="Phase 4: embed K randomly augmented copies per image "
+                          "instead of the image itself (0 = off, plain Phase 3 "
+                          "caching). See src.data.augment.")
+    ap.add_argument("--augment-seed", type=int, default=0,
+                     help="base seed for --augment-copies (default 0)")
     a = ap.parse_args(argv)
 
     cache_split(
         a.manifest, a.out, device=a.device, backbone=a.backbone,
         pretrained=a.pretrained, batch_size=a.batch_size, limit=a.limit,
-        progress=not a.quiet,
+        progress=not a.quiet, augment_copies=a.augment_copies,
+        augment_seed=a.augment_seed,
     )
     return 0
 

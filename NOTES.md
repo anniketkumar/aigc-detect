@@ -215,3 +215,63 @@ predicted ~0.35, at a cost of 27 MB. Full write-up in
 - **The n_bytes bound is weak at the current corpus size.** At 140 real + 160 AI
   the null SD is 0.033, so 0.60 is 3.0σ. The test skips with that message rather
   than implying more confidence than the sample supports.
+
+## Phase 4 — augmentation (sampler + Colab cells built; run pending)
+
+Phase 3 landed at `e7dced2`: `results/baseline/` (clean AUROC 0.9810,
+AUROC `robustness_gap` 0.0099 — under its own null SD, i.e. noise) and
+`results/tpr_analysis/report.md` (the metric that actually resolves: TPR@FPR=5%
+gap 0.0530, 95% CI [0.0369, 0.0632]). Cached features live on Drive at
+`{DRIVE_ROOT}/features/{train,val,test}`; the baseline checkpoint at
+`{DRIVE_ROOT}/checkpoints/baseline.pt`.
+
+Built while Phase 3 was still running, so needed neither its checkpoint nor
+the downloaded corpus: `src/data/augment.py` (25 tests,
+`tests/test_augment.py`); the `--augment-copies`/`--augment-seed` extension to
+`scripts/cache_features.py` (8 tests, `tests/test_cache_features.py`, CLIP
+backbone stubbed — no network). Now added, once Phase 3's real paths were
+known: eleven cells appended to `scripts/colab_setup.ipynb` — cache
+`train` with `--augment-copies 4`, reuse the clean `val` cache as-is, retrain
+into `{DRIVE_ROOT}/checkpoints/aug.pt`, evaluate into `results/aug/` on the
+same held-out `test` split, then `scripts/tpr_gap_analysis.py --run aug
+--run "baseline (post-fix)"` into `results/tpr_analysis_aug/` so the ablation
+gets both the AUROC gap and the TPR@FPR=5% gap side by side, matching Phase
+3's finding that AUROC alone is the wrong number to report the gap on.
+
+### What it is
+
+A RandAugment-style sampler over the same six families as the Phase 1 eval
+grid (`src/transforms.py`), reusing its op implementations verbatim so
+training-time "jpeg" and eval-time "jpeg" cannot drift into two encoders.
+Severities are drawn continuously and strictly wider than the eval grid's
+fixed points (§6) — jpeg q ∈ [20,95], blur σ ∈ [0,3.0], resize scale ∈
+[0.2,1.0], noise σ ∈ [0,0.12], jitter ∈ [0,0.3], crop keep ∈ [0.7,1.0] — so
+the eval grid stays a genuine held-out measurement rather than a distribution
+the head has already seen exact points of. 1-3 families per image, random
+order, ~20% left clean, one seed derived from `(base_seed, image_id,
+copy_index)` via `transforms.derive_seed` — same reproducibility contract as
+the eval harness, extended with a copy index instead of a cell name.
+
+Each call also returns a `DegradationLabel` (which families fired, at what
+severity, plus a fixed 12-dim normalized vector). §6/§7.2 call this "free"
+supervision for a degradation head; HANDOFF.md cuts Phase 5 (artifact branch +
+fusion gate), so nothing consumes it yet. Kept anyway — it costs nothing
+alongside the image, and it is the one piece of the original Phase 4 spec
+worth not having to redo if the gate comes back in scope.
+
+`scripts/cache_features.py --augment-copies K` embeds K augmented copies per
+image instead of the image itself (§6 option (a): "precompute embeddings for
+K augmented copies... much faster and nearly as good" than running CLIP live
+in the dataloader). Writes `degradation.npy` (N·K, 12) alongside the usual
+three files; `paths.json` entries become `"{path}#aug{i}"` so every embedding
+still traces to a source file for error analysis.
+
+### Still pending
+
+- The Colab cells are drafted but not yet executed — `results/aug/` and
+  `results/tpr_analysis_aug/` don't exist yet.
+- `K=4` and `--augment-seed 0` are the plan's defaults, untuned — nothing to
+  tune against until the first augmented run is in.
+- The Phase 4 cells assume the *same* Colab session as Phase 3 (they reuse
+  `data/corpus`, ephemeral on `/content`); starting fresh means re-running
+  Cell 2's download first.
