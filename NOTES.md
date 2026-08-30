@@ -258,17 +258,24 @@ The ablation reports both, not just the family-averaged gap.
 |---|---:|---:|---|
 | Clean AUROC | 0.9810 | 0.9779 | dips slightly, as §6 predicts |
 | AUROC `robustness_gap` | 0.0099 | 0.0077 | both under the 0.0108 null SD — still noise, not a signal either way |
-| **TPR@FPR=5% gap (primary target)** | **0.0530** [0.0369, 0.0632] | **0.0402** [0.0253, 0.0511] | **improved ~24%**, right direction, but the CIs overlap substantially — not a clean statistical win, a real one |
-| TPR@FPR=1% gap | 0.0391 [-0.0017, 0.1066] | 0.0429 [-0.0217, 0.0931] | still crosses zero both runs — too noisy at 1% to read, as Phase 3 already found |
+| **TPR@FPR=5% gap (primary target)** | **0.0530** [0.0369, 0.0632] | **0.0402** [0.0253, 0.0511] | **improved ~24%**, right direction; paired bootstrap (B=2000, same images both runs) puts the diff at -0.0128, 95% CI [-0.0252, +0.0019] — **includes zero**, so not significant at this N despite the marginal CIs barely overlapping |
+| TPR@FPR=1% gap | 0.0391 [-0.0017, 0.1066] | 0.0429 [-0.0217, 0.0931] | still crosses zero both runs — too noisy at 1% to read, as Phase 3 already found; paired diff +0.0038, 95% CI [-0.0432, +0.0416], includes zero |
 | Worst cell (AUROC) | 0.9484 `composed_resize0.25+blur0.5+jpeg30` | 0.9526 `noise_0.1` | worst-cell AUROC improved, and the *identity* of the worst cell moved off the composed chain the augmentation targets most directly |
 | Worst cell (TPR@5%) | 0.7308 (same composed chain) | 0.7875 (same composed chain) | **+0.0567 on the single hardest cell** — the biggest per-cell win in the grid |
 
 **Per-generator TPR spread (secondary target) — did not close:**
 
-| | baseline | aug | read |
-|---|---:|---:|---|
-| clean TPR@1% spread (max−min) | 0.3821 (Aura 0.893 − FLUX 0.511) | 0.3758 (Aura 0.913 − FLUX 0.538) | ~flat, FLUX.1-dev stays the floor |
-| clean TPR@5% spread (max−min) | 0.1365 (MidJourney 0.974 − FLUX 0.838) | 0.1445 (MidJourney 0.976 − Gemini 0.832) | **slightly widened** — Gemini's clean TPR@5% dropped (0.8635→0.8315) enough to replace FLUX as the new floor |
+| | baseline | aug | point diff | paired bootstrap diff (B=2000) | 95% CI | read |
+|---|---:|---:|---:|---:|---|---|
+| clean TPR@1% spread (max−min) | 0.3821 (Aura 0.893 − FLUX 0.511) | 0.3758 (Aura 0.913 − FLUX 0.538) | -0.0062 | +0.0021 | [-0.0508, +0.0429] | **includes zero** — flat is confirmed, not just apparent; FLUX.1-dev stays the floor |
+| clean TPR@5% spread (max−min) | 0.1365 (MidJourney 0.974 − FLUX 0.838) | 0.1445 (MidJourney 0.976 − Gemini 0.832) | +0.0080 | +0.0088 | [-0.0244, +0.0410] | **includes zero** — the apparent widening is not a signal either; Gemini's clean TPR@5% drop (0.8635→0.8315) that swaps in as the new floor is within noise |
+
+Both paired bootstraps (`scripts.tpr_gap_analysis --pair`, same 6810 images
+scored by both runs, one resampled index set per replicate shared across
+runs) confirm what the marginal CIs only suggested: the primary-target
+improvement is real in direction but not significant at this N, and the
+secondary target (spread) genuinely did not move — full table in
+`results/tpr_analysis_aug/report.md`.
 
 So: augmentation bought the primary target a real ~24%-ish reduction and the
 single worst cell in the whole grid a +0.057 TPR@5% gain, exactly where §6

@@ -121,6 +121,164 @@ def ci95(dist: np.ndarray) -> tuple[float, float, float]:
     return float(np.median(dist)), float(np.percentile(dist, 2.5)), float(np.percentile(dist, 97.5))
 
 
+def paired_bootstrap_diff(
+    scores_a: np.ndarray, scores_b: np.ndarray, labels: np.ndarray,
+    rng: np.random.Generator, B: int,
+) -> dict[str, np.ndarray]:
+    """Paired bootstrap of the *difference* in family-balanced TPR gap between
+    two runs scored on the same images.
+
+    Overlapping marginal CIs on two separate estimates do not test whether
+    their difference is nonzero -- each marginal bootstrap in
+    :func:`bootstrap_gap` resamples independently, throwing away the
+    correlation between the two runs' scores on the same image. Here one
+    resample of image indices per replicate is applied to *both* score
+    matrices, so replicate ``b`` compares the two runs on the same simulated
+    sample and the resulting ``diff`` distribution is the thing to read a CI
+    off of, not the two marginals side by side. Valid only when ``scores_a``
+    and ``scores_b`` index the same images in the same row order (assert this
+    upstream via matching ``labels``/generator arrays from :func:`load_wide`).
+    """
+    real_idx, fake_idx = np.where(labels == 0)[0], np.where(labels == 1)[0]
+    n_real, n_fake, n_cells = len(real_idx), len(fake_idx), scores_a.shape[1]
+
+    diff1, diff5 = np.empty(B), np.empty(B)
+    for b in range(B):
+        idx = np.concatenate([real_idx[rng.integers(0, n_real, n_real)],
+                               fake_idx[rng.integers(0, n_fake, n_fake)]])
+        y = np.concatenate([np.zeros(n_real), np.ones(n_fake)])
+        pc_a = {CELL_ORDER[i]: tpr_both(y, scores_a[idx, i]) for i in range(n_cells)}
+        pc_b = {CELL_ORDER[i]: tpr_both(y, scores_b[idx, i]) for i in range(n_cells)}
+        g1a, _ = family_gap(pc_a, 0)
+        g5a, _ = family_gap(pc_a, 1)
+        g1b, _ = family_gap(pc_b, 0)
+        g5b, _ = family_gap(pc_b, 1)
+        diff1[b] = g1b - g1a
+        diff5[b] = g5b - g5a
+    return {"diff1": diff1, "diff5": diff5}
+
+
+def paired_spread_bootstrap(
+    scores_a: np.ndarray, scores_b: np.ndarray, labels: np.ndarray, generator: np.ndarray,
+    rng: np.random.Generator, B: int,
+) -> dict[str, np.ndarray]:
+    """Paired bootstrap of the *difference* in per-generator clean-TPR spread
+    (max-min across generators) between two runs scored on the same images.
+
+    Same rationale as :func:`paired_bootstrap_diff`, applied to the secondary
+    ablation target (NOTES.md Sec"Phase 4") instead of the primary
+    family-balanced gap: the per-generator spread is what the aggregate gap
+    can hide (one generator improving while another, e.g. FLUX.1-dev, stays
+    the floor), so it needs its own paired significance test rather than
+    reading the two runs' marginal per-generator CIs side by side.
+
+    Each replicate draws one shared real-image resample (reused across
+    generators, matching the shared-real-pool convention in
+    :func:`analyze_run`) and, independently per generator, one resample of
+    that generator's fake images -- the same index draws applied to both
+    ``scores_a`` and ``scores_b`` so replicate ``b`` compares the two runs'
+    spreads on the same simulated sample.
+    """
+    real_idx = np.where(labels == 0)[0]
+    n_real = len(real_idx)
+    generators = sorted(set(generator[labels == 1]))
+    fake_idx_by_gen = {g: np.where((labels == 1) & (generator == g))[0] for g in generators}
+    clean_i = CELL_ORDER.index("clean")
+
+    diff1, diff5 = np.empty(B), np.empty(B)
+    for b in range(B):
+        real_samp = real_idx[rng.integers(0, n_real, n_real)]
+        t1_a, t5_a, t1_b, t5_b = {}, {}, {}, {}
+        for g in generators:
+            fidx = fake_idx_by_gen[g]
+            n_g = len(fidx)
+            fake_samp = fidx[rng.integers(0, n_g, n_g)]
+            idx = np.concatenate([real_samp, fake_samp])
+            y = np.concatenate([np.zeros(n_real), np.ones(n_g)])
+            t1_a[g], t5_a[g] = tpr_both(y, scores_a[idx, clean_i])
+            t1_b[g], t5_b[g] = tpr_both(y, scores_b[idx, clean_i])
+        spread1_a = max(t1_a.values()) - min(t1_a.values())
+        spread1_b = max(t1_b.values()) - min(t1_b.values())
+        spread5_a = max(t5_a.values()) - min(t5_a.values())
+        spread5_b = max(t5_b.values()) - min(t5_b.values())
+        diff1[b] = spread1_b - spread1_a
+        diff5[b] = spread5_b - spread5_a
+    return {"diff1": diff1, "diff5": diff5}
+
+
+def per_generator_clean(scores: np.ndarray, labels: np.ndarray, generator: np.ndarray) -> dict[str, tuple[float, float]]:
+    """Point-estimate clean TPR@1%/TPR@5% per generator, shared real pool."""
+    real_mask = labels == 0
+    clean_i = CELL_ORDER.index("clean")
+    out = {}
+    for gen in sorted(set(generator[labels == 1])):
+        keep = real_mask | ((labels == 1) & (generator == gen))
+        out[gen] = tpr_both(labels[keep].astype(float), scores[keep, clean_i])
+    return out
+
+
+def paired_section(
+    label_a: str, path_a: Path, label_b: str, path_b: Path, B: int, seed: int,
+) -> str:
+    """``label_b`` minus ``label_a`` (e.g. aug minus baseline): negative means
+    ``label_b``'s gap/spread is smaller, i.e. more robust."""
+    scores_a, labels_a, gen_a = load_wide(path_a)
+    scores_b, labels_b, gen_b = load_wide(path_b)
+    if not (np.array_equal(labels_a, labels_b) and np.array_equal(gen_a, gen_b)):
+        raise ValueError(
+            f"{path_a} and {path_b} do not score the same images in the same "
+            "order -- paired bootstrap requires identical rows to pair on."
+        )
+
+    per_cell_a = {c: tpr_both(labels_a.astype(float), scores_a[:, i]) for i, c in enumerate(CELL_ORDER)}
+    per_cell_b = {c: tpr_both(labels_b.astype(float), scores_b[:, i]) for i, c in enumerate(CELL_ORDER)}
+    gap1_a, _ = family_gap(per_cell_a, 0)
+    gap5_a, _ = family_gap(per_cell_a, 1)
+    gap1_b, _ = family_gap(per_cell_b, 0)
+    gap5_b, _ = family_gap(per_cell_b, 1)
+
+    dist = paired_bootstrap_diff(scores_a, scores_b, labels_a, np.random.default_rng(seed), B)
+    med1, lo1, hi1 = ci95(dist["diff1"])
+    med5, lo5, hi5 = ci95(dist["diff5"])
+    sig1 = "excludes zero" if lo1 * hi1 > 0 else "includes zero"
+    sig5 = "excludes zero" if lo5 * hi5 > 0 else "includes zero"
+
+    clean_a, clean_b = per_generator_clean(scores_a, labels_a, gen_a), per_generator_clean(scores_b, labels_b, gen_b)
+    spread1_a = max(v[0] for v in clean_a.values()) - min(v[0] for v in clean_a.values())
+    spread1_b = max(v[0] for v in clean_b.values()) - min(v[0] for v in clean_b.values())
+    spread5_a = max(v[1] for v in clean_a.values()) - min(v[1] for v in clean_a.values())
+    spread5_b = max(v[1] for v in clean_b.values()) - min(v[1] for v in clean_b.values())
+    sdist = paired_spread_bootstrap(scores_a, scores_b, labels_a, gen_a, np.random.default_rng(seed), B)
+    smed1, slo1, shi1 = ci95(sdist["diff1"])
+    smed5, slo5, shi5 = ci95(sdist["diff5"])
+    ssig1 = "excludes zero" if slo1 * shi1 > 0 else "includes zero"
+    ssig5 = "excludes zero" if slo5 * shi5 > 0 else "includes zero"
+
+    return (
+        f"## Paired bootstrap: {label_b} vs {label_a}\n\n"
+        f"Same {len(labels_a)} images scored by both runs; one resampled image set per "
+        f"replicate applied to both, B={B}, seed={seed}. `diff = {label_b} - {label_a}`, "
+        "negative means smaller (more robust) under "
+        f"`{label_b}`.\n\n"
+        "**Family-balanced gap (primary target):**\n\n"
+        "| Metric | " + f"{label_a} gap" + " | " + f"{label_b} gap" + " | point diff | "
+        "bootstrap median diff | 95% CI | 95% CI |\n"
+        "|---|---:|---:|---:|---:|---|---|\n"
+        f"| TPR@1% gap | {gap1_a:.4f} | {gap1_b:.4f} | {gap1_b - gap1_a:+.4f} | "
+        f"{med1:+.4f} | [{lo1:+.4f}, {hi1:+.4f}] | {sig1} |\n"
+        f"| TPR@5% gap | {gap5_a:.4f} | {gap5_b:.4f} | {gap5_b - gap5_a:+.4f} | "
+        f"{med5:+.4f} | [{lo5:+.4f}, {hi5:+.4f}] | {sig5} |\n\n"
+        "**Per-generator clean-TPR spread, max-min (secondary target):**\n\n"
+        "| Metric | " + f"{label_a} spread" + " | " + f"{label_b} spread" + " | point diff | "
+        "bootstrap median diff | 95% CI | 95% CI |\n"
+        "|---|---:|---:|---:|---:|---|---|\n"
+        f"| clean TPR@1% spread | {spread1_a:.4f} | {spread1_b:.4f} | {spread1_b - spread1_a:+.4f} | "
+        f"{smed1:+.4f} | [{slo1:+.4f}, {shi1:+.4f}] | {ssig1} |\n"
+        f"| clean TPR@5% spread | {spread5_a:.4f} | {spread5_b:.4f} | {spread5_b - spread5_a:+.4f} | "
+        f"{smed5:+.4f} | [{slo5:+.4f}, {shi5:+.4f}] | {ssig5} |\n"
+    )
+
+
 def analyze_run(label: str, path: Path, out: Path, b_main: int, b_gen: int, seed: int) -> str:
     scores, labels, generator = load_wide(path)
     n_real, n_fake = int((labels == 0).sum()), int((labels == 1).sum())
@@ -184,9 +342,14 @@ def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     ap.add_argument("--run", action="append", nargs=2, metavar=("LABEL", "SCORES_CSV"),
                      help="repeatable: a run label and its scores.csv path")
+    ap.add_argument("--pair", action="append", nargs=4,
+                     metavar=("LABEL_A", "SCORES_CSV_A", "LABEL_B", "SCORES_CSV_B"),
+                     help="repeatable: paired bootstrap of the gap difference between two "
+                          "runs scored on the same images (label_b minus label_a)")
     ap.add_argument("--out", type=Path, required=True)
     ap.add_argument("--b-main", type=int, default=800, help="bootstrap reps, 19-cell grid")
     ap.add_argument("--b-gen", type=int, default=300, help="bootstrap reps, per-generator gap")
+    ap.add_argument("--b-pair", type=int, default=2000, help="bootstrap reps, paired gap diff")
     ap.add_argument("--seed", type=int, default=0)
     a = ap.parse_args(argv)
     a.out.mkdir(parents=True, exist_ok=True)
@@ -204,6 +367,8 @@ def main(argv: list[str] | None = None) -> int:
     ]
     for label, path in runs:
         sections.append(analyze_run(label, Path(path), a.out, a.b_main, a.b_gen, a.seed))
+    for label_a, path_a, label_b, path_b in (a.pair or []):
+        sections.append(paired_section(label_a, Path(path_a), label_b, Path(path_b), a.b_pair, a.seed))
 
     (a.out / "report.md").write_text("\n".join(sections), encoding="utf-8")
     print(f"-> {a.out / 'report.md'}")
