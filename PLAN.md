@@ -317,6 +317,20 @@ under `jpeg=30` and `resize=0.25`.** Save that grid as
 `results/baseline/grid.csv` — the collapse is your "before" picture and it goes
 in the video.
 
+> **Spec correction, post Phase 3 (results/baseline/report.md):** the sharp
+> collapse did not occur. Clean AUROC 0.9810, `jpeg_30` 0.9642, `resize_0.25`
+> 0.9742 — drops of 1.7 and 0.7 points, not a collapse. This prediction
+> belonged to the artifact branch (§7.1, DCT/high-pass residual → small CNN),
+> which is cut. A frozen CLIP linear probe reads semantic content, and
+> semantic evidence — "this is a face / a room / a dog" — survives JPEG and
+> downscaling; only pixel-level artifact signal collapses under compression.
+> The prediction was written for the branch that looks at pixels, not the one
+> that shipped. The real weak point for this model is an *operating-point*
+> one, not a collapse: see `results/tpr_analysis/report.md` and
+> `results/baseline/per_generator.md` for TPR@FPR=5%'s family-balanced gap
+> (0.0530) and the per-generator TPR@FPR=1% spread (0.511–0.893) AUROC does
+> not show.
+
 If compute allows later, compare ViT-B/16 vs ViT-L/14 and report it. Both are far
 under the 2B cap (~150M and ~428M).
 

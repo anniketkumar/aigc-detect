@@ -1,0 +1,68 @@
+{
+  "features": [
+    "hf_energy",
+    "flat_frac"
+  ],
+  "n_train": 9380,
+  "n_test": 6810,
+  "coef_standardized": {
+    "hf_energy": -0.6239342635581362,
+    "flat_frac": -0.5325767843336382
+  },
+  "overall": {
+    "auroc": 0.6085399176954733,
+    "tpr_at_fpr1": 0.03216666666666667
+  },
+  "per_generator": {
+    "Aura": {
+      "n": 300,
+      "auroc": 0.5303251028806584,
+      "tpr_at_fpr1": 0.016666666666666666
+    },
+    "FLUX.1-dev": {
+      "n": 800,
+      "auroc": 0.3583904320987654,
+      "tpr_at_fpr1": 0.0
+    },
+    "Gemini-nano-banana": {
+      "n": 2000,
+      "auroc": 0.7428876543209877,
+      "tpr_at_fpr1": 0.0465
+    },
+    "MidJourney": {
+      "n": 2000,
+      "auroc": 0.5368932098765432,
+      "tpr_at_fpr1": 0.003
+    },
+    "Mobius": {
+      "n": 300,
+      "auroc": 0.5775555555555556,
+      "tpr_at_fpr1": 0.006666666666666667
+    },
+    "RealVisXL-V4.0": {
+      "n": 300,
+      "auroc": 0.8626666666666666,
+      "tpr_at_fpr1": 0.21666666666666667
+    },
+    "SDXL": {
+      "n": 300,
+      "auroc": 0.7126707818930041,
+      "tpr_at_fpr1": 0.07333333333333333
+    }
+  },
+  "clip_per_generator_clean_auroc": {
+    "Aura": 0.9949465020576131,
+    "FLUX.1-dev": 0.9697206790123457,
+    "Gemini-nano-banana": 0.9707635802469136,
+    "MidJourney": 0.9922043209876544,
+    "Mobius": 0.9893004115226337,
+    "RealVisXL-V4.0": 0.9847325102880659,
+    "SDXL": 0.9777942386831275
+  },
+  "spearman_vs_clip": {
+    "rho": -0.14285714285714288,
+    "p": 0.7599453002180929,
+    "n_generators": 7
+  },
+  "elapsed_s": 158.0
+}
