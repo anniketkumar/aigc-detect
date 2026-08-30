@@ -21,7 +21,7 @@ data/manifests/*
 data/forbidden/*
 !data/forbidden/blocklist.json
 
-runs/
+runs/*
 results/**/cache/
 
 # Transformed-image cache written by src/evaluate.py --cache-dir
@@ -44,3 +44,10 @@ venv/
 
 .env
 .DS_Store
+
+# The two trained checkpoints ARE committed, same reasoning as data/forbidden/
+# above: they're the linear head only (~4 KB each; the CLIP backbone downloads
+# from open_clip's own registry at runtime), and without them predict.py and
+# app.py need a Colab run before a judge can use either.
+!runs/baseline.pt
+!runs/aug.pt
