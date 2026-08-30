@@ -1,97 +1,155 @@
 # Robust AIGC Image Detection
 
 > Detectors don't fail because AI images are hard to spot. They fail because
-> JPEG re-encoding, resizing and blur destroy the low-level artifacts they were
-> trained to read. So: train on the degraded distribution, and give the model an
-> explicit estimate of *how* degraded its input is.
+> aggregate metrics hide where they actually break, and JPEG re-encoding,
+> resizing and blur destroy the low-level artifacts they were trained to read.
 
-Every architectural choice traces back to that sentence. The full build plan is
-in [PLAN.md](PLAN.md); the running decision log is in [NOTES.md](NOTES.md).
+This repo does two things, in this order: **measure** where an AI-image
+detector actually fails (per generator, under real-world post-processing),
+then try one standard fix (training-time augmentation) and report honestly
+how much of the problem it closes.
 
-## Status
+Full build log and every design decision: [PLAN.md](PLAN.md) (the spec),
+[HANDOFF.md](HANDOFF.md) (phase-3 brief), [NOTES.md](NOTES.md) (the running
+decision log — what was tried, what failed, and why). This file is the
+short version.
+
+## What's actually here
+
+A frozen CLIP ViT-B/16 backbone + a trained linear head — deliberately the
+simplest model that could work, not the original full design. The plan
+called for an artifact branch, a degradation head and a fusion gate (Phase
+5) plus post-hoc calibration (Phase 6); both were cut once measurement
+showed the eval harness and the augmentation ablation mattered more than
+architecture at this budget (PLAN.md §13's effort ranking). What shipped:
 
 | Phase | State |
 |---|---|
-| 1 — evaluation harness | **done** |
-| 2 — data | not started |
-| 3 — CLIP linear-probe baseline | not started |
-| 4 — augmentation | not started |
-| 5 — full model (artifact branch + degradation head + gate) | not started |
-| 6 — calibration | not started |
-| 7 — `predict.py`, demo | not started |
+| 1 — 19-cell robustness eval harness | done |
+| 2 — leak-audited data pipeline | done |
+| 3 — CLIP linear-probe baseline | done |
+| 4 — training-time augmentation | done |
+| 5 — artifact branch + fusion gate | **cut** — not enough budget to earn its row in the ablation table |
+| 6 — calibration | **cut** — same reason |
+| 7 — `predict.py`, `app.py` | done |
 
-The measurement layer is built before the thing it measures, on purpose: you
-cannot iterate on robustness you cannot measure.
+## Headline results
 
-## Install
+**1. The standard corpus separates perfectly without looking at a pixel.**
+SID_Set's real images are 100% JPEG, its AI images 100% PNG — a one-line rule
+(`if container == PNG: predict AI`) scores 100.00% accuracy on real-vs-fake
+with zero pixels read (`results/audit_sid_set.md`). Same story for geometry
+(AI images are all exactly 1024²) and ICC profiles. The whole data pipeline
+(`src/data/normalize.py`, `scripts/download_data.py`) exists to force every
+image through one canonical decode — strip metadata, crop natively, single
+JPEG pass at a matched quality — before a model ever sees it, closing 12 of
+13 leak channels the Phase 2 audit found.
+
+**2. Aggregate AUROC hides a 0.35 operating-point spread across generators.**
+Per-generator AUROC on the aug checkpoint sits in a tight 0.97–0.99 band —
+reads as "uniformly strong." At a 1% false-positive budget (the operating
+point that matters for moderation triage, not the threshold-free rank
+statistic), clean TPR ranges from **0.5375 on FLUX.1-dev** to **0.8865 on
+MidJourney** — the model catches barely half of the hardest generator's
+images at the same false-positive budget where it catches ~89% of the
+easiest. See `results/tpr_analysis_aug/report.md` and
+`results/baseline/per_generator.md`.
+
+**3. Training-time augmentation is a partial, unproven fix.** RandAugment-
+style degradation during training (`src/data/augment.py`) moves the primary
+target — the family-averaged TPR@5% robustness gap — from 0.0530 to 0.0402,
+about a 24% reduction, in the right direction. A **paired bootstrap** (same
+6810 test images, B=2000, resampled jointly so the two runs are compared on
+the same simulated sample rather than via overlapping marginal CIs) puts
+that difference at **-0.0128, 95% CI [-0.0252, +0.0019] — not significant at
+this N.** It does not touch the per-generator spread at all: **+0.0021, 95%
+CI [-0.0508, +0.0429]**, FLUX.1-dev stays the floor. Full numbers and method:
+`results/tpr_analysis_aug/report.md`, `NOTES.md` §"Phase 4".
+
+Read together: the metric you pick determines whether this project looks
+solved (AUROC), partially fixed (TPR@5% gap), or untouched (per-generator
+spread) — which is the point of measuring all three instead of reporting the
+one that looks best.
+
+## Setup
 
 ```bash
 pip install -r requirements.txt
 ```
 
-Phase 1 needs only numpy, pandas, pillow, scikit-learn, tqdm and pyyaml. The
-torch/CLIP pins are for Phase 3 onward.
+Phase 1 (the eval harness) needs only numpy, pandas, pillow, scikit-learn,
+tqdm, pyyaml. Everything else (torch, open_clip, gradio, pyarrow/fsspec for
+data acquisition) is pinned but only imported from Phase 3 onward.
 
-## Phase 1 — the robustness harness
+Both trained checkpoints are committed (`runs/baseline.pt`, `runs/aug.pt` —
+the linear head only, ~4 KB each; the CLIP backbone itself downloads from
+open_clip's pretrained registry on first use), so `predict.py` and `app.py`
+below work on a fresh clone with no training or data download step.
 
-A model is evaluated over a grid of 19 cells: clean, 14 single
-(transform, severity) pairs across six degradation families, and four composed
-chains standing in for real redistribution paths (`resize 0.25 → blur 0.5 →
-jpeg 30` is "worst case"). See [PLAN.md §3.1](PLAN.md).
+## Run it
 
-Per cell it reports AUROC, AP, acc@0.5 and TPR@FPR=1%. The two numbers that
-matter:
-
-```
-robustness_gap = AUROC(clean) − mean(AUROC(all transformed cells))    ↓ better
-worst_case     = min(AUROC over all cells)                           ↑ better
-```
-
-Clean AUROC is never to be reported on its own.
-
-### Run it
+**`predict.py` — the deliverable.** Image directory in, `preds.json` out:
 
 ```bash
-# once Phase 2 has built manifests
-python -m src.evaluate --ckpt runs/baseline.pt --split test --out results/baseline/
+python predict.py --image_dir path/to/images --out preds.json --ckpt runs/aug.pt
 ```
 
-Writes `grid.csv`, `report.md` (the markdown table), `summary.json` (aggregates
-plus the full run config) and `scores.csv` (raw per-image scores, for the §11
-error analysis) into the output directory.
+Writes `[{"image_path": ..., "pred": 0.873}, ...]`, one entry per image,
+sorted so output is byte-identical across runs and OSes. Recurses for
+jpg/jpeg/png/webp/bmp, converts anything (grayscale, CMYK, alpha) through the
+same decode path the eval harness uses, and never crashes on a bad file —
+a genuine decode failure gets `"pred": null` with a warning on stderr rather
+than stopping the run. Defaults to `runs/baseline.pt`; pass `--ckpt
+runs/aug.pt` for the augmented checkpoint, `--device cuda` if you have a GPU.
 
-Useful flags: `--cells clean jpeg` to restrict the grid, `--limit N` for a
-seeded class-stratified subset, `--cache-dir` to cache transformed images as
-lossless PNG, `--seed` for the stochastic cells.
-
-### Acceptance check (no data or model required)
+**`app.py` — the interactive demo.** A Gradio UI: upload an image, drag a
+JPEG-quality slider from 95 down to 30, watch the score move.
 
 ```bash
-python -m scripts.make_dummy_fixture --out data/fixtures/dummy --n 400 --seed 0
-python -m src.evaluate --model dummy_random \
-    --manifest data/fixtures/dummy/manifest.csv --out results/dummy/
+python app.py
 ```
 
-A random-scoring model must land at chance in all 19 cells. Committed result in
-[results/dummy/report.md](results/dummy/report.md): AUROC ∈ [0.471, 0.596],
-mean 0.502, against a null SD of 0.0289 at this sample size — i.e. the whole grid
-is inside ±3.3σ of 0.5. Over 20 seeds the empirical SD across cells is 0.0288
-against a theoretical 0.0289, so the harness reproduces the Mann–Whitney null,
-not merely a number near a half.
+Every step goes through the same production code paths — `predict.py`'s
+decoder, the same scorer, `src/transforms.py`'s real JPEG encode/decode (not
+a simulated one) — so the number the slider shows is the same operation the
+eval grid measured at population scale, not a demo-only approximation. Lets
+you switch between the baseline and aug checkpoints live.
 
-The fixture is generated with no real/fake signal in it (content seeded from the
-image index, never the label; filenames carry no label either), which makes this
-a null test of the harness rather than of the model: a cell far from 0.5 can only
-mean labels leaked into the scores.
-
-### Reproducibility
-
-Stochastic cells (`noise`, `jitter`) seed from
-`blake2b(base_seed, image_id, cell_name)` rather than a global RNG stream, so a
-cell's output is a pure function of those three things. Evaluation order, batch
-size, and whether the transform cache is warm cannot change a single pixel —
-each is pinned by a test.
+**Reproduce the measurement layer:**
 
 ```bash
-python -m pytest        # 84 tests
+python -m pytest                                          # 324 tests
+python -m src.evaluate --ckpt runs/aug.pt --split test --out results/aug/
+python -m scripts.tpr_gap_analysis --run baseline results/baseline/scores.csv \
+    --run aug results/aug/scores.csv \
+    --pair baseline results/baseline/scores.csv aug results/aug/scores.csv \
+    --out results/tpr_analysis_aug
+python -m scripts.error_analysis   # results/error_analysis/
 ```
+
+## Limitations
+
+- **810 real test images is the binding constraint**, not the model. Every
+  non-significant result above (the TPR@5% gap improvement, the
+  per-generator spread) is non-significant because the paired bootstrap CIs
+  are wide at this N, not because the effect is known to be zero. A larger
+  held-out real pool is the single highest-leverage next step for resolving
+  either question.
+- **FLUX.1-dev is the floor and augmentation didn't move it.** Same
+  generator, same rank, before and after Phase 4. `NOTES.md` and
+  `results/error_analysis/` look at what it's actually missing; a next step
+  (untested) would bias the augmentation sampler toward FLUX.1-dev-hard
+  cases specifically rather than degradation families uniformly.
+- **No calibration layer.** Scores are a trained sigmoid output, not
+  calibrated probabilities — `acc@0.5` in the eval reports should be read
+  with that in mind; AUROC/TPR@FPR are threshold-free and don't have this
+  problem.
+- **No artifact branch, no degradation-awareness at inference time.** The
+  model is a single frozen-backbone linear probe. The augmentation sampler
+  computes a `DegradationLabel` per training image (which families fired, at
+  what severity) that nothing currently consumes — kept because it was
+  free, in case a fusion gate comes back in scope.
+- **Three held-out generators, not an open set.** MidJourney, Gemini
+  (nano-banana) and FLUX.1-dev are held fully out of training, but "unseen
+  generator" here means these three specifically, not a guarantee about
+  generators not represented in the eval at all.
