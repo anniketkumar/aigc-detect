@@ -38,6 +38,7 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
       formData.append('image', blob, 'image.jpg');
       formData.append('checkpoint', 'aug');
       formData.append('quality', '95');
+      formData.append('fast_mode', 'true');
 
       const apiResponse = await fetch('http://localhost:8000/api/analyze', {
         method: 'POST',
