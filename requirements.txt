@@ -18,9 +18,11 @@ torchvision==0.28.0
 open-clip-torch==3.3.0
 opencv-python==5.0.0.93
 
-# --- reporting / demo ---
+# --- reporting / UI API ---
 matplotlib==3.10.9
-gradio==6.19.0
+fastapi==0.135.1
+uvicorn==0.41.0
+python-multipart==0.0.22
 
 # --- scripts: data acquisition and audit ---
 # Imported at module level by scripts/download_data.py, build_blocklist.py,

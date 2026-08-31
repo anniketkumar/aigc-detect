@@ -1,172 +1,95 @@
-"""Gradio demo (PLAN.md §9.2): upload an image, then a JPEG-quality slider
-95 -> 30, re-encoding and re-scoring live.
+"""HTTP interface for the React detector UI.
 
-This file is a thin UI shell. It does not reimplement decoding or inference:
-
-- The canonical decode path is ``predict.load_for_scoring``, imported
-  verbatim -- the same function ``predict.py`` calls per image, itself a
-  wrapper around ``src/data/imageio.py::load_image`` (§4.4's decoder: EXIF
-  orientation applied, all metadata stripped, any mode -> RGB, truncation
-  recovered and reported rather than crashing).
-- The scoring path is ``src.models.base.load_model("clip_linear", ...)``,
-  the exact ``Scorer`` the eval harness and ``predict.py`` both call through
-  -- frozen CLIP ViT-B/16 -> trained linear head -> sigmoid.
-- The JPEG degradation step is ``src.transforms.t_jpeg``, the same
-  real-encoder round-trip (``BytesIO`` + ``Image.save(..., quality=q)``, not
-  a simulation) that produced every ``jpeg_*`` cell in ``results/*/grid.csv``.
-  So the number this app shows for "quality 30" is the same operation Phase 1
-  and Phase 4 measured at population scale, not a demo-only approximation.
-
-Nothing here touches ``src/data/manifest.py``, ``normalize.py`` or any
-training-time path -- this is inference-only, on whatever the user uploads.
-
-Framing, deliberately left out of this file: whether the slider should be
-narrated as "confidence collapsing" or "confidence holding" depends on
-which checkpoint and which metric you're looking at (see
-``results/aug/report.md`` and ``results/tpr_analysis_aug/report.md`` --
-AUROC barely moves across the JPEG axis for either checkpoint, TPR@FPR=1%
-moves more, and augmentation narrows but does not close that drop). This
-app shows the live number for both checkpoints and lets you pick the honest
-framing after watching it, rather than asserting one in the UI copy.
+This deliberately stays thin: it uses the canonical decoder from
+``predict.py`` and the same JPEG round-trip and checkpoint scorer as the
+command-line deliverable. It does not duplicate model or image processing.
 """
 
 from __future__ import annotations
 
+import base64
 import io
+import tempfile
 from pathlib import Path
 
-import gradio as gr
+from fastapi import FastAPI, File, Form, HTTPException, UploadFile
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from PIL import Image
 
 from predict import load_for_scoring
 from src.models.base import load_model
 from src.transforms import t_jpeg, to_rgb
 
-CHECKPOINTS = {
-    "aug -- Phase 4 (+augmentation)": Path("runs/aug.pt"),
-    "baseline -- Phase 3 (no augmentation)": Path("runs/baseline.pt"),
-}
-DEFAULT_CHECKPOINT = "aug -- Phase 4 (+augmentation)"
-DEVICE = "cpu"  # demo runs on whatever laptop plays the video; no GPU assumed
-
-# One backbone+head per checkpoint, loaded lazily and kept warm for the
-# session -- open_clip construction is the slow part, scoring one image
-# after that is fast even on CPU.
+CHECKPOINTS = {"aug": Path("runs/aug.pt"), "baseline": Path("runs/baseline.pt")}
+MAX_UPLOAD_BYTES = 25 * 1024 * 1024
 _models: dict[Path, object] = {}
 
+app = FastAPI(title="AIGC detector API", docs_url=None, redoc_url=None)
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:5173", "http://127.0.0.1:5173"],
+    allow_methods=["POST"],
+    allow_headers=["*"],
+)
 
-def _get_model(label: str):
-    ckpt = CHECKPOINTS[label]
+
+def _get_model(checkpoint: str):
+    ckpt = CHECKPOINTS[checkpoint]
     if ckpt not in _models:
-        _models[ckpt] = load_model("clip_linear", ckpt=ckpt, device=DEVICE)
+        _models[ckpt] = load_model("clip_linear", ckpt=ckpt, device="cpu")
     return _models[ckpt]
 
 
-def _score(model, img: Image.Image) -> float | None:
-    return model.score([img], ["ui-upload"])[0]
-
-
 def _jpeg_kb(img: Image.Image, quality: int) -> float:
-    """File size a real encoder produces at this quality -- same params
-    ``t_jpeg`` uses internally, just also kept around for display."""
     buf = io.BytesIO()
-    to_rgb(img).save(buf, format="JPEG", quality=int(quality), subsampling="4:2:0")
+    to_rgb(img).save(buf, format="JPEG", quality=quality, subsampling="4:2:0")
     return len(buf.getvalue()) / 1024
 
 
-def on_upload(file_path: str | None, model_label: str, quality: int):
-    """New image: decode via the canonical path, cache it in State, and
-    score both clean and at the current slider position."""
-    if file_path is None:
-        return None, None, "Upload an image to begin.", None
-
-    img, warning = load_for_scoring(Path(file_path))
-    if img is None:
-        return None, None, f"⚠ could not decode this file: {warning}", None
-
-    model = _get_model(model_label)
-    clean_score = _score(model, img)
-    degraded, live_score, kb = _rescore(img, model, quality)
-    status = _status(warning, clean_score, quality, live_score, kb)
-    return img, degraded, status, img
+def _image_data_url(img: Image.Image) -> str:
+    buf = io.BytesIO()
+    to_rgb(img).save(buf, format="JPEG", quality=92, subsampling="4:2:0")
+    return "data:image/jpeg;base64," + base64.b64encode(buf.getvalue()).decode("ascii")
 
 
-def on_quality_or_model_change(state_img, model_label: str, quality: int):
-    """Slider release, or checkpoint switch: re-encode + re-score against the
-    already-decoded image in State -- no re-decode from disk needed."""
-    if state_img is None:
-        return None, "Upload an image first."
-    model = _get_model(model_label)
-    clean_score = _score(model, state_img)
-    degraded, live_score, kb = _rescore(state_img, model, quality)
-    status = _status(None, clean_score, quality, live_score, kb)
-    return degraded, status
+@app.get("/api/health")
+def health():
+    return {"status": "ok"}
 
 
-def _rescore(img: Image.Image, model, quality: int):
-    degraded = t_jpeg(img, int(quality))  # real encode/decode, PLAN.md §3.1
-    score = _score(model, degraded)
-    kb = _jpeg_kb(img, quality)
-    return degraded, score, kb
+@app.post("/api/analyze")
+async def analyze(
+    image: UploadFile = File(...),
+    checkpoint: str = Form("aug"),
+    quality: int = Form(95),
+):
+    if checkpoint not in CHECKPOINTS:
+        raise HTTPException(422, "Choose either the augmented or baseline model.")
+    if not 30 <= quality <= 95:
+        raise HTTPException(422, "JPEG quality must be between 30 and 95.")
+    payload = await image.read(MAX_UPLOAD_BYTES + 1)
+    if len(payload) > MAX_UPLOAD_BYTES:
+        raise HTTPException(413, "Images must be 25 MB or smaller.")
+    if not payload:
+        raise HTTPException(422, "Choose an image file to analyze.")
 
+    suffix = Path(image.filename or "upload").suffix or ".img"
+    with tempfile.NamedTemporaryFile(suffix=suffix) as temporary:
+        temporary.write(payload)
+        temporary.flush()
+        decoded, warning = load_for_scoring(Path(temporary.name))
+    if decoded is None:
+        raise HTTPException(422, warning or "This file could not be decoded as an image.")
 
-def _status(warning, clean_score, quality, live_score, kb) -> str:
-    lines = []
-    if warning:
-        lines.append(f"⚠ {warning}")
-    if clean_score is not None:
-        lines.append(f"**clean** — P(AI-generated) = `{clean_score:.3f}`")
-    if live_score is not None:
-        lines.append(f"**q={quality}** ({kb:.1f} KB) — P(AI-generated) = `{live_score:.3f}`")
-    else:
-        lines.append(f"**q={quality}** — could not score this image")
-    return "\n\n".join(lines)
-
-
-with gr.Blocks(title="AIGC detector — JPEG-quality demo") as demo:
-    gr.Markdown(
-        "# AIGC image detector\n"
-        "Upload an image, then drag the JPEG-quality slider. Each release "
-        "re-encodes the *canonically decoded* image through a real JPEG "
-        "encoder at that quality and re-scores it with the same model "
-        "`predict.py` uses."
-    )
-
-    with gr.Row():
-        model_dd = gr.Dropdown(
-            choices=list(CHECKPOINTS), value=DEFAULT_CHECKPOINT,
-            label="Checkpoint",
-        )
-        quality = gr.Slider(
-            minimum=30, maximum=95, value=95, step=1,
-            label="JPEG quality (95 → 30)",
-        )
-
-    upload = gr.Image(type="filepath", label="Upload an image")
-    decoded_state = gr.State(None)  # canonically decoded PIL image
-
-    with gr.Row():
-        decoded_view = gr.Image(label="Canonical decode (clean)", interactive=False)
-        reencoded_view = gr.Image(label="Re-encoded at slider quality", interactive=False)
-
-    status_md = gr.Markdown()
-
-    upload.upload(
-        on_upload,
-        inputs=[upload, model_dd, quality],
-        outputs=[decoded_view, reencoded_view, status_md, decoded_state],
-    )
-    quality.release(
-        on_quality_or_model_change,
-        inputs=[decoded_state, model_dd, quality],
-        outputs=[reencoded_view, status_md],
-    )
-    model_dd.change(
-        on_quality_or_model_change,
-        inputs=[decoded_state, model_dd, quality],
-        outputs=[reencoded_view, status_md],
-    )
-
-
-if __name__ == "__main__":
-    demo.launch()
+    model = _get_model(checkpoint)
+    clean_score = model.score([decoded], ["ui-upload"])[0]
+    reencoded = t_jpeg(decoded, quality)
+    reencoded_score = model.score([reencoded], ["ui-upload-jpeg"])[0]
+    return JSONResponse({
+        "checkpoint": checkpoint, "quality": quality,
+        "clean_score": clean_score, "reencoded_score": reencoded_score,
+        "jpeg_kb": round(_jpeg_kb(decoded, quality), 1), "warning": warning,
+        "clean_preview": _image_data_url(decoded),
+        "reencoded_preview": _image_data_url(reencoded),
+    })

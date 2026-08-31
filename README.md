@@ -102,18 +102,26 @@ a genuine decode failure gets `"pred": null` with a warning on stderr rather
 than stopping the run. Defaults to `runs/baseline.pt`; pass `--ckpt
 runs/aug.pt` for the augmented checkpoint, `--device cuda` if you have a GPU.
 
-**`app.py` — the interactive demo.** A Gradio UI: upload an image, drag a
-JPEG-quality slider from 95 down to 30, watch the score move.
+**React UI — the interactive interface.** A Vite + React client with a thin
+FastAPI adapter: upload an image, choose a checkpoint, drag the JPEG-quality
+slider from 95 down to 30, and compare the canonical decode with the actual
+JPEG re-encoding used for the displayed result. The UI offers light and dark
+mode and translates the score into a careful review cue without presenting it
+as a certainty.
 
 ```bash
-python app.py
+uvicorn app:app --port 8000
+# in another terminal
+npm --prefix frontend run dev
 ```
 
-Every step goes through the same production code paths — `predict.py`'s
-decoder, the same scorer, `src/transforms.py`'s real JPEG encode/decode (not
-a simulated one) — so the number the slider shows is the same operation the
-eval grid measured at population scale, not a demo-only approximation. Lets
-you switch between the baseline and aug checkpoints live.
+The browser is served at `http://localhost:5173` and proxies its API calls to
+the local adapter. Every step goes through the same production code paths —
+`predict.py`'s decoder, the same scorer, `src/transforms.py`'s real JPEG
+encode/decode (not a simulated one) — so the number the UI shows is the same
+operation the eval grid measured at population scale, not a demo-only
+approximation. The adapter keeps one model instance warm per checkpoint so
+changing quality does not reload the backbone.
 
 **Reproduce the measurement layer:**
 
