@@ -80,6 +80,9 @@ body {
   color: var(--text-main);
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
+  overflow-x: hidden;
+  overflow-y: scroll;
+  scrollbar-gutter: stable;
   transition: background-color 0.2s, color 0.2s;
 }
 
@@ -767,4 +770,232 @@ h1, h2, h3 { margin: 0; font-weight: 600; letter-spacing: -0.02em; }
 }
 @keyframes spin {
   to { transform: rotate(360deg); }
+}
+
+/* ── Glassmorphism Overrides ─────────────────────────────────── */
+.panel, .card, .data-cell, .drop-target {
+  background: rgba(255, 255, 255, 0.45) !important;
+  backdrop-filter: blur(16px);
+}
+:root[data-theme="dark"] .panel, 
+:root[data-theme="dark"] .card, 
+:root[data-theme="dark"] .data-cell,
+:root[data-theme="dark"] .drop-target {
+  background: rgba(17, 17, 17, 0.45) !important;
+}
+.verdict-banner {
+  background: rgba(255, 255, 255, 0.2) !important;
+}
+:root[data-theme="dark"] .verdict-banner {
+  background: rgba(0, 0, 0, 0.2) !important;
+}
+.tool-section-wrapper, .workspace {
+  background: transparent !important;
+}
+
+/* ── Expand Button ───────────────────────────────────────────── */
+.expand-btn {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  background: rgba(0,0,0,0.6);
+  color: white;
+  border: none;
+  padding: 8px;
+  border-radius: 6px;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+  z-index: 10;
+  display: grid;
+  place-items: center;
+}
+.proof-image:hover .expand-btn { opacity: 1; }
+.expand-btn:hover { background: rgba(0,0,0,0.9); transform: scale(1.05); }
+
+/* ── Tooltip ────────────────────────────────────────────────── */
+.tooltip-trigger {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  color: var(--text-dim);
+  cursor: help;
+}
+
+.tooltip-trigger:hover .tooltip-content {
+  opacity: 1;
+  visibility: visible;
+  transform: translateX(-50%) translateY(0);
+}
+
+.tooltip-content {
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%) translateY(-4px);
+  margin-top: 8px;
+  width: 250px;
+  background: var(--panel-bg);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-md);
+  padding: 12px;
+  border-radius: var(--radius-sm);
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--text-main);
+  opacity: 0;
+  visibility: hidden;
+  transition: all 0.2s ease;
+  z-index: 50;
+  pointer-events: none;
+  text-align: left;
+  font-weight: 400;
+  text-transform: none;
+  letter-spacing: normal;
+}
+
+/* ── Modal ──────────────────────────────────────────────────── */
+.modal-overlay {
+  position: fixed;
+  top: 0; left: 0; width: 100vw; height: 100vh;
+  background: rgba(0,0,0,0.85);
+  backdrop-filter: blur(6px);
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 40px;
+}
+
+.modal-content {
+  position: relative;
+  max-width: 100%;
+  max-height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.modal-content img, .modal-content canvas {
+  max-width: 100%;
+  max-height: 90vh;
+  border-radius: var(--radius-md);
+  box-shadow: 0 12px 48px rgba(0,0,0,0.5);
+  background: var(--bg);
+}
+
+.modal-close {
+  position: absolute;
+  top: -48px;
+  right: 0;
+  color: white;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 8px;
+  opacity: 0.8;
+  display: grid;
+  place-items: center;
+}
+.modal-close:hover { opacity: 1; transform: scale(1.1); }
+
+/* ── Share Button ───────────────────────────────────────────── */
+.share-btn {
+  position: absolute;
+  top: 24px;
+  right: 24px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(0, 0, 0, 0.05);
+  border: 1px solid var(--border);
+  color: var(--text-main);
+  padding: 8px 14px;
+  border-radius: 20px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  backdrop-filter: blur(8px);
+}
+.share-btn:hover {
+  background: var(--bg);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-sm);
+  border-color: var(--text-dim);
+}
+:root[data-theme="dark"] .share-btn {
+  background: rgba(255, 255, 255, 0.05);
+}
+:root[data-theme="dark"] .share-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+/* ── API Docs ───────────────────────────────────────────────── */
+.api-docs-container {
+  padding: 40px;
+  max-width: 900px;
+  margin: 0 auto;
+  width: 100%;
+}
+.api-docs-content {
+  background: rgba(255, 255, 255, 0.45);
+  backdrop-filter: blur(16px);
+  border: 1px solid var(--border);
+  padding: 40px;
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-sm);
+}
+:root[data-theme="dark"] .api-docs-content {
+  background: rgba(17, 17, 17, 0.45);
+}
+.api-docs-content h1 { margin-top: 0; font-size: 32px; }
+.api-endpoint {
+  margin-top: 32px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 24px;
+  background: var(--panel-bg);
+}
+.endpoint-header {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 16px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--border);
+}
+.endpoint-header .method {
+  background: var(--brand-magenta);
+  color: white;
+  padding: 4px 12px;
+  border-radius: 4px;
+  font-weight: bold;
+  font-family: monospace;
+}
+.endpoint-header .path {
+  font-size: 20px;
+  font-weight: 600;
+  font-family: monospace;
+}
+.api-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 16px 0 32px;
+}
+.api-table th, .api-table td {
+  text-align: left;
+  padding: 12px;
+  border-bottom: 1px solid var(--border);
+}
+.api-table th { color: var(--text-dim); }
+.code-block {
+  background: #1a1a1a;
+  color: #e5e5e5;
+  padding: 16px;
+  border-radius: 8px;
+  overflow-x: auto;
+  font-family: monospace;
+  font-size: 13px;
+  border: 1px solid rgba(255,255,255,0.1);
 }

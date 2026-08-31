@@ -16,6 +16,7 @@ from fastapi import FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from PIL import Image
+import numpy as np
 
 from predict import load_for_scoring
 from src.models.base import load_model
@@ -54,6 +55,56 @@ def _image_data_url(img: Image.Image) -> str:
     return "data:image/jpeg;base64," + base64.b64encode(buf.getvalue()).decode("ascii")
 
 
+
+def _generate_ela_heatmap(img: Image.Image, quality: int) -> str:
+    img_rgb = to_rgb(img)
+    buf = io.BytesIO()
+    # High compression to find differences, like frontend (85)
+    img_rgb.save(buf, format="JPEG", quality=85)
+    buf.seek(0)
+    reencoded_img = Image.open(buf)
+
+    arr1 = np.array(img_rgb).astype(np.float32)
+    arr2 = np.array(reencoded_img).astype(np.float32)
+    
+    diff = np.abs(arr1 - arr2)
+    mag = np.mean(diff, axis=2)
+    
+    # Auto-scale the ELA so the 99th percentile hits t=0.8 (Bright Red/Yellow)
+    p99 = np.percentile(mag, 99)
+    if p99 < 1:
+        p99 = 1.0
+        
+    amp = np.clip((mag / p99) * 204, 0, 255)
+    t = amp / 255.0
+    
+    r = np.zeros_like(t)
+    g = np.zeros_like(t)
+    b = np.zeros_like(t)
+    
+    # 0.0 -> 0.33: Black (0,0,0) to Purple (120,0,120)
+    m1 = t < 0.33
+    subT1 = t[m1] / 0.33
+    r[m1] = 120 * subT1
+    b[m1] = 120 * subT1
+    
+    # 0.33 -> 0.66: Purple (120,0,120) to Red (255,0,0)
+    m2 = (t >= 0.33) & (t < 0.66)
+    subT2 = (t[m2] - 0.33) / 0.33
+    r[m2] = 120 + (255 - 120) * subT2
+    b[m2] = 120 - (120 * subT2)
+    
+    # 0.66 -> 1.0: Red (255,0,0) to Yellow (255,255,0)
+    m3 = t >= 0.66
+    subT3 = (t[m3] - 0.66) / 0.34
+    r[m3] = 255
+    g[m3] = 255 * subT3
+    
+    heatmap = np.stack([r, g, b], axis=2).astype(np.uint8)
+    heatmap_img = Image.fromarray(heatmap, 'RGB')
+    
+    return _image_data_url(heatmap_img)
+
 @app.get("/api/health")
 def health():
     return {"status": "ok"}
@@ -64,6 +115,7 @@ async def analyze(
     image: UploadFile = File(...),
     checkpoint: str = Form("aug"),
     quality: int = Form(95),
+    fast_mode: bool = Form(False),
 ):
     if checkpoint not in CHECKPOINTS:
         raise HTTPException(
@@ -89,10 +141,18 @@ async def analyze(
     clean_score = model.score([decoded], ["ui-upload"])[0]
     reencoded = t_jpeg(decoded, quality)
     reencoded_score = model.score([reencoded], ["ui-upload-jpeg"])[0]
-    return JSONResponse({
-        "checkpoint": checkpoint, "quality": quality,
-        "clean_score": clean_score, "reencoded_score": reencoded_score,
-        "jpeg_kb": round(_jpeg_kb(decoded, quality), 1), "warning": warning,
-        "clean_preview": _image_data_url(decoded),
-        "reencoded_preview": _image_data_url(reencoded),
-    })
+    if fast_mode:
+        return JSONResponse({
+            "checkpoint": checkpoint, "quality": quality,
+            "clean_score": clean_score, "reencoded_score": reencoded_score,
+            "warning": warning
+        })
+    else:
+        return JSONResponse({
+            "checkpoint": checkpoint, "quality": quality,
+            "clean_score": clean_score, "reencoded_score": reencoded_score,
+            "jpeg_kb": round(_jpeg_kb(decoded, quality), 1), "warning": warning,
+            "clean_preview": _image_data_url(decoded),
+            "reencoded_preview": _image_data_url(reencoded),
+            "ela_preview": _generate_ela_heatmap(decoded, quality),
+        })
