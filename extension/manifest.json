@@ -1,0 +1,15 @@
+{
+  "manifest_version": 3,
+  "name": "ImageSignal Analyzer",
+  "version": "1.0",
+  "description": "Detect AI-generated images instantly from any webpage.",
+  "permissions": ["contextMenus", "scripting", "activeTab"],
+  "host_permissions": ["<all_urls>"],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "action": {
+    "default_title": "ImageSignal Analyzer"
+  }
+}
+

@@ -1,0 +1,892 @@
+<title>Robust AIGC Detection, Explained</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Serif:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap');
+
+:root{
+  --paper:#f1f2ec;
+  --paper-raised:#ffffff;
+  --ink:#161a19;
+  --ink-soft:#4d5652;
+  --ink-faint:#7c8783;
+  --line:#d7dbd0;
+  --line-strong:#b9c0b3;
+  --accent:#0c7a73;
+  --accent-ink:#f3fbf9;
+  --accent-soft:#e1f0ec;
+  --good:#2f8f5b;
+  --good-soft:#e3f2e7;
+  --cut:#b5541c;
+  --cut-soft:#f5e6da;
+  --mono-bg:#e7e9df;
+  --shadow:0 1px 2px rgba(20,30,26,0.06), 0 8px 24px -14px rgba(20,30,26,0.18);
+  color-scheme:light;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --paper:#14181a;
+    --paper-raised:#1b2022;
+    --ink:#edf1ec;
+    --ink-soft:#a9b3ac;
+    --ink-faint:#7d8985;
+    --line:#2b3234;
+    --line-strong:#3a4345;
+    --accent:#3fb8ab;
+    --accent-ink:#08201d;
+    --accent-soft:#1a2f2c;
+    --good:#57c087;
+    --good-soft:#173226;
+    --cut:#e0904f;
+    --cut-soft:#33261a;
+    --mono-bg:#222829;
+    --shadow:0 1px 2px rgba(0,0,0,0.3), 0 8px 24px -14px rgba(0,0,0,0.5);
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --paper:#14181a;
+  --paper-raised:#1b2022;
+  --ink:#edf1ec;
+  --ink-soft:#a9b3ac;
+  --ink-faint:#7d8985;
+  --line:#2b3234;
+  --line-strong:#3a4345;
+  --accent:#3fb8ab;
+  --accent-ink:#08201d;
+  --accent-soft:#1a2f2c;
+  --good:#57c087;
+  --good-soft:#173226;
+  --cut:#e0904f;
+  --cut-soft:#33261a;
+  --mono-bg:#222829;
+  --shadow:0 1px 2px rgba(0,0,0,0.3), 0 8px 24px -14px rgba(0,0,0,0.5);
+  color-scheme:dark;
+}
+
+*{box-sizing:border-box;}
+body{
+  margin:0;
+  background:var(--paper);
+  color:var(--ink);
+  font-family:'IBM Plex Sans', system-ui, sans-serif;
+  font-size:16px;
+  line-height:1.6;
+}
+@media (prefers-reduced-motion: no-preference){
+  html{scroll-behavior:smooth;}
+}
+h1,h2,h3{
+  font-family:'IBM Plex Serif', Georgia, serif;
+  font-weight:600;
+  text-wrap:balance;
+  margin:0;
+  color:var(--ink);
+}
+code, .mono, .num{
+  font-family:'IBM Plex Mono', ui-monospace, monospace;
+  font-variant-numeric:tabular-nums;
+}
+a{color:var(--accent);}
+p{margin:0 0 1em;max-width:66ch;}
+:focus-visible{outline:2px solid var(--accent); outline-offset:2px;}
+
+.eyebrow{
+  font-family:'IBM Plex Mono', monospace;
+  font-size:0.72rem;
+  letter-spacing:0.11em;
+  text-transform:uppercase;
+  color:var(--accent);
+  font-weight:600;
+}
+
+/* ---------- shell layout ---------- */
+.shell{
+  max-width:1180px;
+  margin:0 auto;
+  padding:0 24px 96px;
+  display:grid;
+  grid-template-columns:220px minmax(0,1fr);
+  gap:56px;
+}
+@media (max-width:980px){
+  .shell{grid-template-columns:1fr; padding:0 20px 72px;}
+  .toc{display:none;}
+}
+
+/* ---------- masthead ---------- */
+.masthead{
+  grid-column:1 / -1;
+  padding:56px 0 40px;
+  border-bottom:1px solid var(--line);
+  margin-bottom:8px;
+}
+.masthead .eyebrow{display:block;margin-bottom:14px;}
+.masthead h1{
+  font-size:clamp(2rem, 4vw, 2.9rem);
+  line-height:1.1;
+  max-width:16ch;
+}
+.masthead .thesis{
+  margin-top:18px;
+  font-size:1.08rem;
+  color:var(--ink-soft);
+  max-width:58ch;
+}
+.meta-row{
+  margin-top:26px;
+  display:flex;
+  flex-wrap:wrap;
+  gap:10px;
+}
+.chip{
+  font-family:'IBM Plex Mono', monospace;
+  font-size:0.74rem;
+  padding:5px 10px;
+  border-radius:3px;
+  background:var(--mono-bg);
+  color:var(--ink-soft);
+  border:1px solid var(--line);
+}
+.chip.accent{background:var(--accent-soft); color:var(--accent); border-color:transparent; font-weight:600;}
+
+/* ---------- toc ---------- */
+.toc{
+  position:sticky;
+  top:32px;
+  align-self:start;
+  padding-top:8px;
+}
+.toc-label{
+  font-family:'IBM Plex Mono', monospace;
+  font-size:0.7rem;
+  letter-spacing:0.1em;
+  text-transform:uppercase;
+  color:var(--ink-faint);
+  margin-bottom:10px;
+}
+.toc ol{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:2px;}
+.toc a{
+  display:block;
+  padding:6px 0 6px 12px;
+  border-left:2px solid var(--line);
+  color:var(--ink-soft);
+  text-decoration:none;
+  font-size:0.86rem;
+  transition:border-color .15s, color .15s;
+}
+.toc a:hover{color:var(--ink);}
+.toc a.active{
+  color:var(--accent);
+  border-left-color:var(--accent);
+  font-weight:600;
+}
+
+/* ---------- main column ---------- */
+main{min-width:0;}
+section{
+  padding:52px 0;
+  border-bottom:1px solid var(--line);
+}
+section:last-of-type{border-bottom:none;}
+.section-head{margin-bottom:26px;}
+.section-head .eyebrow{display:block;margin-bottom:8px;}
+.section-head h2{font-size:1.55rem;}
+.section-intro{color:var(--ink-soft); max-width:64ch;}
+
+/* ---------- tldr strip ---------- */
+.tldr-grid{
+  display:grid;
+  grid-template-columns:repeat(3,1fr);
+  gap:1px;
+  background:var(--line);
+  border:1px solid var(--line);
+  border-radius:6px;
+  overflow:hidden;
+}
+@media (max-width:760px){.tldr-grid{grid-template-columns:1fr;}}
+.tldr-card{
+  background:var(--paper-raised);
+  padding:22px;
+}
+.tldr-card .tag{
+  font-family:'IBM Plex Mono', monospace;
+  font-size:0.68rem;
+  letter-spacing:0.08em;
+  text-transform:uppercase;
+  color:var(--ink-faint);
+  margin-bottom:10px;
+  display:block;
+}
+.tldr-card .stat{
+  font-family:'IBM Plex Serif', serif;
+  font-size:1.7rem;
+  font-weight:600;
+  color:var(--accent);
+  display:block;
+  margin-bottom:6px;
+}
+.tldr-card p{font-size:0.89rem;color:var(--ink-soft);margin:0;}
+
+/* ---------- range viz ---------- */
+.rangebox{
+  background:var(--paper-raised);
+  border:1px solid var(--line);
+  border-radius:8px;
+  padding:24px 26px 20px;
+  box-shadow:var(--shadow);
+}
+.rangebox h4{
+  font-family:'IBM Plex Sans';
+  font-size:0.92rem;
+  font-weight:600;
+  margin:0 0 18px;
+}
+.range-row{margin-bottom:20px;}
+.range-row:last-child{margin-bottom:6px;}
+.range-label{
+  display:flex; justify-content:space-between; align-items:baseline;
+  font-size:0.8rem; color:var(--ink-soft); margin-bottom:6px;
+}
+.range-track{
+  position:relative;
+  height:22px;
+  background:var(--mono-bg);
+  border-radius:11px;
+}
+.range-fill{
+  position:absolute; top:0; bottom:0;
+  background:var(--accent);
+  border-radius:11px;
+}
+.range-fill.wide{background:var(--cut);}
+.range-fill .rf-label{
+  position:absolute; top:100%; margin-top:4px;
+  font-size:0.72rem; font-family:'IBM Plex Mono';
+  color:var(--ink-soft); white-space:nowrap;
+}
+.range-fill .rf-label.left{left:0;}
+.range-fill .rf-label.right{right:0;}
+.axis{
+  display:flex; justify-content:space-between;
+  font-size:0.68rem; color:var(--ink-faint); font-family:'IBM Plex Mono';
+  margin-top:34px;
+}
+
+/* ---------- CI diagram ---------- */
+.ci-wrap{margin-top:22px;}
+.ci-track{
+  position:relative; height:46px; background:var(--mono-bg); border-radius:6px; margin-top:10px;
+}
+.ci-zero{
+  position:absolute; top:0; bottom:0; width:1px; background:var(--ink-faint);
+}
+.ci-zero::after{
+  content:'0'; position:absolute; top:-18px; left:-4px; font-size:0.68rem; font-family:'IBM Plex Mono'; color:var(--ink-faint);
+}
+.ci-band{
+  position:absolute; top:16px; height:14px; background:var(--cut-soft); border:1px solid var(--cut); border-radius:7px;
+}
+.ci-dot{
+  position:absolute; top:11px; width:10px; height:10px; border-radius:50%; background:var(--cut); transform:translateX(-50%);
+}
+.ci-caption{font-size:0.8rem; color:var(--ink-soft); margin-top:10px;}
+
+/* ---------- repo tree ---------- */
+.tree-groups{display:flex; flex-direction:column; gap:22px;}
+.tree-group{
+  background:var(--paper-raised);
+  border:1px solid var(--line);
+  border-radius:8px;
+  overflow:hidden;
+}
+.tree-group-head{
+  padding:12px 18px;
+  background:var(--mono-bg);
+  font-family:'IBM Plex Mono';
+  font-size:0.78rem;
+  font-weight:600;
+  letter-spacing:0.03em;
+  color:var(--ink-soft);
+  display:flex; justify-content:space-between; align-items:center;
+}
+.tree-rows{padding:6px 0;}
+.tree-row{
+  display:grid;
+  grid-template-columns:minmax(150px,240px) 1fr;
+  gap:16px;
+  padding:9px 18px;
+  border-top:1px solid var(--line);
+  align-items:baseline;
+}
+.tree-row:first-child{border-top:none;}
+.tree-row .path{
+  font-family:'IBM Plex Mono';
+  font-size:0.82rem;
+  color:var(--accent);
+  word-break:break-word;
+}
+.tree-row .why{font-size:0.87rem; color:var(--ink-soft);}
+@media (max-width:640px){
+  .tree-row{grid-template-columns:1fr; gap:4px;}
+}
+
+/* ---------- phase timeline ---------- */
+.phase-list{display:flex; flex-direction:column;}
+.phase{
+  display:grid;
+  grid-template-columns:56px 1fr;
+  gap:18px;
+  position:relative;
+  padding-bottom:30px;
+}
+.phase:last-child{padding-bottom:0;}
+.phase::before{
+  content:'';
+  position:absolute;
+  left:27px; top:34px; bottom:0;
+  width:2px;
+  background:var(--line);
+}
+.phase:last-child::before{display:none;}
+.phase-num{
+  width:56px; height:56px; border-radius:50%;
+  background:var(--paper-raised); border:2px solid var(--line);
+  display:flex; align-items:center; justify-content:center;
+  font-family:'IBM Plex Mono'; font-weight:600; font-size:1.1rem;
+  color:var(--ink-soft); z-index:1;
+}
+.phase.done .phase-num{border-color:var(--good); color:var(--good);}
+.phase.cut .phase-num{border-color:var(--cut); color:var(--cut);}
+.phase-body{
+  background:var(--paper-raised);
+  border:1px solid var(--line);
+  border-radius:8px;
+  padding:16px 20px;
+}
+.phase-body-head{display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:6px;}
+.phase-body h4{font-family:'IBM Plex Sans'; font-size:1rem; font-weight:600; margin:0;}
+.status-pill{
+  font-family:'IBM Plex Mono'; font-size:0.68rem; letter-spacing:0.06em; text-transform:uppercase;
+  padding:2px 9px; border-radius:20px; font-weight:600;
+}
+.status-pill.done{background:var(--good-soft); color:var(--good);}
+.status-pill.cut{background:var(--cut-soft); color:var(--cut);}
+.phase-body p{font-size:0.9rem; color:var(--ink-soft); margin:0;}
+
+/* ---------- decision cards ---------- */
+.decisions{display:flex; flex-direction:column; gap:16px;}
+.decision{
+  background:var(--paper-raised);
+  border:1px solid var(--line);
+  border-left:3px solid var(--accent);
+  border-radius:6px;
+  padding:20px 22px;
+}
+.decision h4{font-size:1.02rem; margin-bottom:10px;}
+.decision .field{margin-top:10px;}
+.decision .field-label{
+  font-family:'IBM Plex Mono'; font-size:0.68rem; letter-spacing:0.08em; text-transform:uppercase;
+  color:var(--ink-faint); margin-bottom:3px;
+}
+.decision .field p, .decision .field div{font-size:0.89rem; color:var(--ink-soft); margin:0;}
+.decision .field.rejected{color:var(--cut);}
+.decision .field.rejected .field-label{color:var(--cut);}
+
+/* ---------- limitations ---------- */
+.limits{display:flex; flex-direction:column; gap:14px;}
+.limit{
+  display:grid; grid-template-columns:22px 1fr; gap:12px;
+  padding:14px 0; border-top:1px solid var(--line);
+}
+.limit:first-child{border-top:none; padding-top:0;}
+.limit .mark{color:var(--cut); font-family:'IBM Plex Mono'; font-weight:600;}
+.limit p{margin:0; font-size:0.92rem; color:var(--ink-soft);}
+.limit strong{color:var(--ink); font-weight:600;}
+
+/* ---------- frontend callout ---------- */
+.callout{
+  background:var(--accent-soft);
+  border:1px solid var(--accent);
+  border-radius:8px;
+  padding:24px 26px;
+}
+.callout h3{font-size:1.15rem; margin-bottom:10px; color:var(--ink);}
+.callout p{color:var(--ink-soft);}
+.contract{
+  margin-top:14px;
+  background:var(--paper-raised);
+  border:1px solid var(--line);
+  border-radius:6px;
+  padding:14px 16px;
+  font-family:'IBM Plex Mono';
+  font-size:0.82rem;
+  overflow-x:auto;
+  color:var(--ink);
+  white-space:pre;
+}
+
+table{border-collapse:collapse; width:100%; font-size:0.87rem;}
+th,td{text-align:left; padding:8px 12px; border-bottom:1px solid var(--line);}
+th{font-family:'IBM Plex Mono'; font-size:0.7rem; letter-spacing:0.06em; text-transform:uppercase; color:var(--ink-faint); font-weight:600;}
+.table-wrap{overflow-x:auto; background:var(--paper-raised); border:1px solid var(--line); border-radius:8px; padding:4px 6px;}
+
+footer{
+  grid-column:1/-1;
+  padding-top:40px;
+  color:var(--ink-faint);
+  font-size:0.82rem;
+}
+footer a{color:var(--ink-soft);}
+</style>
+
+<div class="shell">
+
+  <div class="masthead">
+    <span class="eyebrow">Project brief — read before the next teammate sync</span>
+    <h1>Robust AIGC Image Detection</h1>
+    <p class="thesis">A detector for AI-generated images, built around one refusal: don't let an aggregate
+      number stand in for the question a moderation system actually asks. This page is the whole project,
+      start to finish — what each piece is for, what was tried and cut, and why — so anyone touching it,
+      frontend included, can pick it up without re-deriving the reasoning.</p>
+    <div class="meta-row">
+      <span class="chip accent">Status: submitted</span>
+      <span class="chip">7 phases planned · 5 shipped, 2 cut on purpose</span>
+      <span class="chip">324 tests</span>
+      <span class="chip">149.6M params, 513 trainable</span>
+    </div>
+  </div>
+
+  <nav class="toc">
+    <div class="toc-label">On this page</div>
+    <ol>
+      <li><a href="#tldr" data-toc>The finding</a></li>
+      <li><a href="#problem" data-toc>The problem &amp; constraints</a></li>
+      <li><a href="#repomap" data-toc>What's in the repo</a></li>
+      <li><a href="#phases" data-toc>Build order</a></li>
+      <li><a href="#decisions" data-toc>Key decisions</a></li>
+      <li><a href="#results" data-toc>Results, in detail</a></li>
+      <li><a href="#limits" data-toc>Limitations</a></li>
+      <li><a href="#frontend" data-toc>Where the UI fits</a></li>
+    </ol>
+  </nav>
+
+  <main>
+
+    <section id="tldr">
+      <div class="section-head">
+        <span class="eyebrow">Start here</span>
+        <h2>The metric you pick decides whether this looks solved</h2>
+        <p class="section-intro">Three findings, read together, are the actual submission — not the model.</p>
+      </div>
+
+      <div class="tldr-grid">
+        <div class="tldr-card">
+          <span class="tag">Finding 1 — the data</span>
+          <span class="stat">100.00%</span>
+          <p>accuracy on the standard benchmark corpus (SID_Set) reading <strong>zero pixels</strong> — real
+          images are 100% JPEG, AI images 100% PNG. A container-format check alone wins the leaderboard.</p>
+        </div>
+        <div class="tldr-card">
+          <span class="tag">Finding 2 — the metric</span>
+          <span class="stat">0.35 spread</span>
+          <p>in true-positive rate across generators at a realistic 1% false-positive budget, hidden entirely
+          inside a AUROC band of 0.97–0.99 that reads as "uniformly strong."</p>
+        </div>
+        <div class="tldr-card">
+          <span class="tag">Finding 3 — the fix</span>
+          <span class="stat">~24%, n.s.</span>
+          <p>Training-time augmentation moves the robustness gap the right direction, but a paired bootstrap
+          says that move isn't statistically significant at 810 real test images — and it doesn't touch the
+          per-generator spread at all.</p>
+        </div>
+      </div>
+    </section>
+
+    <section id="problem">
+      <div class="section-head">
+        <span class="eyebrow">Brief</span>
+        <h2>The problem &amp; the constraints it had to fit</h2>
+      </div>
+      <p class="section-intro">Hackathon problem statement 5: tell AI-generated images from authentic ones,
+      with accuracy that survives what actually happens to an image before a moderator sees it — re-compression,
+      resizing, blur, noise, cropping, a repost of a repost.</p>
+
+      <div class="table-wrap" style="margin-top:18px;">
+        <table>
+          <tr><th>Constraint</th><th>Value</th></tr>
+          <tr><td>Model size</td><td class="mono">&lt; 2B parameters, all branches combined</td></tr>
+          <tr><td>Compute</td><td>Hackathon-scale — assume one GPU, Colab T4</td></tr>
+          <tr><td>Forbidden training data</td><td>WildFake reference subset (4,998 COCO val2017 + 8,843 DALL·E Advanced) — disqualification risk if leaked into train</td></tr>
+          <tr><td>Output contract</td><td class="mono">JSON: {image_path, pred ∈ [0,1]} per image</td></tr>
+        </table>
+      </div>
+
+      <p style="margin-top:20px;">Every architectural choice traces back to one sentence in the plan: detectors
+      don't fail because AI images are inherently hard to spot — they fail because re-encoding, resizing and
+      blur destroy the low-level artifacts a model was trained to read, and nobody measures that failure because
+      the standard metric doesn't surface it. <strong>Measure it first, then try to fix it, then say honestly
+      how much of the problem the fix closed.</strong></p>
+    </section>
+
+    <section id="repomap">
+      <div class="section-head">
+        <span class="eyebrow">Orientation</span>
+        <h2>What's in the repo, and what each part is for</h2>
+        <p class="section-intro">Four layers: measure, prepare data, model, and ship. Everything below exists
+        because a phase in the build order needed it — nothing is here decoratively.</p>
+      </div>
+
+      <div class="tree-groups">
+        <div class="tree-group">
+          <div class="tree-group-head"><span>Measurement layer — built first, before any model existed</span><span>Phase 1</span></div>
+          <div class="tree-rows">
+            <div class="tree-row"><span class="path">src/transforms.py</span><span class="why">The 19-cell degradation grid: clean + 14 single transforms across 6 families (JPEG, blur, resize, noise, jitter, crop) + 4 composed chains standing in for a real repost path.</span></div>
+            <div class="tree-row"><span class="path">src/metrics.py</span><span class="why">AUROC, AP, accuracy, TPR@fixed-FPR, and <code>robustness_gap</code> (clean score minus mean transformed score).</span></div>
+            <div class="tree-row"><span class="path">src/evaluate.py</span><span class="why">Runs a checkpoint over every grid cell and writes the report tables in <code>results/</code>.</span></div>
+          </div>
+        </div>
+
+        <div class="tree-group">
+          <div class="tree-group-head"><span>Data pipeline — where the leak audit lives</span><span>Phase 2</span></div>
+          <div class="tree-rows">
+            <div class="tree-row"><span class="path">src/data/sources.py</span><span class="why">Streams 18,200 images from 6 trained-on generators + 1 held-out, and 3 deliberately different real-photo sources, from HuggingFace — nothing raw ever hits disk.</span></div>
+            <div class="tree-row"><span class="path">src/data/imageio.py, normalize.py</span><span class="why">The canonical decode path every image passes through — strip metadata, crop natively, single matched-quality JPEG pass. This is what closes the leak.</span></div>
+            <div class="tree-row"><span class="path">src/data/manifest.py</span><span class="why">Builds <code>train/val/test.csv</code> and enforces the splitting rules (generator holdout, hash-based exclusion, near-duplicate clustering).</span></div>
+            <div class="tree-row"><span class="path">src/data/augment.py</span><span class="why">Phase 4's training-time degradation sampler — reuses <code>transforms.py</code>'s exact op code so train-time and eval-time "jpeg" can't drift apart.</span></div>
+            <div class="tree-row"><span class="path">data/forbidden/blocklist.json</span><span class="why">5,000 sha256 + 5,000 pHash of COCO val2017, so a renamed/re-encoded copy of the forbidden WildFake reference subset still gets caught before training.</span></div>
+            <div class="tree-row"><span class="path">scripts/audit_leakage.py, audit_resample.py</span><span class="why">The audit tools that found the container-format / geometry / ICC / file-size leaks in the first place.</span></div>
+          </div>
+        </div>
+
+        <div class="tree-group">
+          <div class="tree-group-head"><span>Model — deliberately the simplest thing that could work</span><span>Phase 3–4</span></div>
+          <div class="tree-rows">
+            <div class="tree-row"><span class="path">src/models/clip_backbone.py</span><span class="why">Frozen CLIP ViT-B/16 feature extractor (open_clip). Never fine-tuned.</span></div>
+            <div class="tree-row"><span class="path">src/models/clip_baseline.py, semantic_head.py</span><span class="why">The trained part: a linear head on top of frozen CLIP features. 513 trainable parameters, total.</span></div>
+            <div class="tree-row"><span class="path">src/models/dummy.py</span><span class="why">A null/random-score model and a planted-weakness model, used only to validate that the eval harness itself is trustworthy before trusting any number it produces.</span></div>
+            <div class="tree-row"><span class="path">src/train.py</span><span class="why">Trains the linear head against cached CLIP embeddings (cached, not recomputed live, to fit the Colab T4 budget).</span></div>
+          </div>
+        </div>
+
+        <div class="tree-group">
+          <div class="tree-group-head"><span>Deliverables &amp; proof</span><span>Phase 7 + throughout</span></div>
+          <div class="tree-rows">
+            <div class="tree-row"><span class="path">predict.py</span><span class="why"><strong>The actual deliverable.</strong> Image directory in, <code>preds.json</code> out. See the "Where the UI fits" section — this is the contract a real frontend integrates against.</span></div>
+            <div class="tree-row"><span class="path">app.py</span><span class="why">A Gradio scratch demo for the pitch video only — upload an image, drag a JPEG-quality slider, watch the score move on the same code paths <code>predict.py</code> uses. Not the product's UI.</span></div>
+            <div class="tree-row"><span class="path">runs/baseline.pt, runs/aug.pt</span><span class="why">The two trained linear heads (~4 KB each), committed so a fresh clone runs with no training or data download step.</span></div>
+            <div class="tree-row"><span class="path">results/</span><span class="why">Every number in every doc is a committed, regeneratable file here — not a number transcribed once and left unverifiable.</span></div>
+            <div class="tree-row"><span class="path">tests/</span><span class="why">324 tests, including blocking tests that re-assert closed leaks and the WildFake exclusion — a future change can't silently reopen either.</span></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="phases">
+      <div class="section-head">
+        <span class="eyebrow">Sequence — this order was enforced, not incidental</span>
+        <h2>Build order, and what got cut</h2>
+        <p class="section-intro">The plan's guardrail: <em>"do not reorder the phases — effort-to-payoff ranking
+        is eval harness &gt; augmentation &gt; calibration &gt; fusion gate &gt; backbone choice."</em> Phases 5
+        and 6 were named as cut, with the reasoning stated, rather than left to look like scope that ran out of time.</p>
+      </div>
+
+      <div class="phase-list">
+        <div class="phase done">
+          <div class="phase-num">1</div>
+          <div class="phase-body">
+            <div class="phase-body-head"><h4>Robustness eval harness</h4><span class="status-pill done">Done</span></div>
+            <p>19-cell degradation grid, validated against a null model (random scores land inside ±3.3σ of chance
+            over 20 seeds) and a planted-weakness model that fails in exactly the injected cell — so a robustness
+            number from it can be trusted before a real model ever runs through it.</p>
+          </div>
+        </div>
+        <div class="phase done">
+          <div class="phase-num">2</div>
+          <div class="phase-body">
+            <div class="phase-body-head"><h4>Leak-audited data pipeline</h4><span class="status-pill done">Done</span></div>
+            <p>Found and closed 12 of 13 metadata leak channels in the standard corpus; rebuilt sourcing around
+            three real-photo sources and seven generators, three held fully out of training.</p>
+          </div>
+        </div>
+        <div class="phase done">
+          <div class="phase-num">3</div>
+          <div class="phase-body">
+            <div class="phase-body-head"><h4>CLIP linear-probe baseline</h4><span class="status-pill done">Done</span></div>
+            <p>Deliberately the dumbest model that could plausibly work — the control everything else is measured against.</p>
+          </div>
+        </div>
+        <div class="phase done">
+          <div class="phase-num">4</div>
+          <div class="phase-body">
+            <div class="phase-body-head"><h4>Training-time augmentation</h4><span class="status-pill done">Done</span></div>
+            <p>The single biggest lever the plan identified. Landed a real, direction-correct improvement on the
+            primary target and did not move the secondary one — reported as exactly that.</p>
+          </div>
+        </div>
+        <div class="phase cut">
+          <div class="phase-num">5</div>
+          <div class="phase-body">
+            <div class="phase-body-head"><h4>Artifact branch + fusion gate</h4><span class="status-pill cut">Cut</span></div>
+            <p>A second model branch reading DCT/high-pass residuals, gated together with the CLIP branch. Cut once
+            Phases 1–4 showed the eval harness and the augmentation ablation mattered more than architecture at this
+            time and compute budget — it wouldn't have earned its own row in the ablation table.</p>
+          </div>
+        </div>
+        <div class="phase cut">
+          <div class="phase-num">6</div>
+          <div class="phase-body">
+            <div class="phase-body-head"><h4>Post-hoc calibration</h4><span class="status-pill cut">Cut</span></div>
+            <p>Per-bucket temperature scaling, so scores would read as real probabilities. Same reasoning as Phase 5 —
+            named as cut, and the consequence (scores are a sigmoid output, not a calibrated probability) is stated
+            plainly in the limitations rather than glossed over.</p>
+          </div>
+        </div>
+        <div class="phase done">
+          <div class="phase-num">7</div>
+          <div class="phase-body">
+            <div class="phase-body-head"><h4>Deliverable surfaces</h4><span class="status-pill done">Done</span></div>
+            <p><code>predict.py</code> and <code>app.py</code>, both running standalone from a fresh clone with the
+            committed checkpoints — no training or data download needed for anyone to see either work.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="decisions">
+      <div class="section-head">
+        <span class="eyebrow">The part worth explaining out loud</span>
+        <h2>Key decisions, and what they were weighed against</h2>
+        <p class="section-intro">Not every choice below was obvious going in — several are corrections made
+        after something in the data or the numbers contradicted the original plan.</p>
+      </div>
+
+      <div class="decisions">
+
+        <div class="decision">
+          <h4>Frozen CLIP ViT-B/16 + a linear head, never fine-tuned</h4>
+          <div class="field">
+            <div class="field-label">Why</div>
+            <p>Fits the &lt;2B parameter budget by roughly 13×, and the entire trainable surface is 513 numbers —
+            it trains on a single Colab T4 in minutes, not hours. The plan's guardrail was explicit: don't fine-tune
+            the backbone before the frozen-probe pipeline works end-to-end.</p>
+          </div>
+          <div class="field rejected">
+            <div class="field-label">Rejected</div>
+            <div>A custom CNN or a fine-tuned backbone — more capacity, but it competes with the eval harness and
+            the augmentation ablation for the same time budget, and the plan's own effort-ranking put backbone
+            choice last.</div>
+          </div>
+        </div>
+
+        <div class="decision">
+          <h4>Build the eval harness before any model exists</h4>
+          <div class="field">
+            <div class="field-label">Why</div>
+            <p>A robustness number is worthless if the thing measuring it hasn't been checked. The harness had to
+            prove it reports ~0 gap on a random model and correctly flags an injected weakness before it was ever
+            trusted to report a number on a real one.</p>
+          </div>
+        </div>
+
+        <div class="decision">
+          <h4>One canonical decode path for every image, no exceptions</h4>
+          <div class="field">
+            <div class="field-label">Why</div>
+            <p>The standard benchmark corpus (SID_Set) separates classes perfectly on container format alone — real
+            images are 100% JPEG, AI images 100% PNG — plus geometry (AI always exactly 1024²) and ICC profiles.
+            A model, or a lazy heuristic, can score 100% having read zero pixels. Every image now goes through:
+            strip all metadata → crop at native resolution (never resize, which leaves a per-class resampling
+            signature) → random, not centered, crop location (generators center their subject) → one JPEG pass at
+            a matched quality (a constant has AUROC 0.5 by construction, provably, not just measured).</p>
+          </div>
+          <div class="field rejected">
+            <div class="field-label">Rejected</div>
+            <div>Using the corpus as distributed, or a lighter cleanup pass — both leave at least one leak channel
+            live, and a leaderboard number built on a leaky corpus measures file-format detection, not generation
+            detection.</div>
+          </div>
+        </div>
+
+        <div class="decision">
+          <h4>Three real-photo sources, not one</h4>
+          <div class="field">
+            <div class="field-label">Why</div>
+            <p>AI outputs in the training mix skew polished and cinematic; a single amateur-photo real source lets
+            the model learn "well-lit = fake," a shortcut that survives JPEG re-encoding and would make the
+            robustness numbers look good for the wrong reason. Unsplash (professional photography, labeled real)
+            was added as the control so "polished" stops predicting "fake."</p>
+          </div>
+          <div class="field rejected">
+            <div class="field-label">Rejected — and caught by the same audit process</div>
+            <div>Pexels was tried and dropped after measurement: its files came out ~16 KB against 66–103 KB
+            elsewhere, separable from every other real source by file size alone at AUROC 1.0000. A second-order
+            leak introduced while fixing the first one — now a blocking regression test.</div>
+          </div>
+        </div>
+
+        <div class="decision">
+          <h4>Three entire generators held fully out of training</h4>
+          <div class="field">
+            <div class="field-label">Why</div>
+            <p>MidJourney, Gemini (nano-banana), and FLUX.1-dev — three distinct model families, all closed
+            commercial — go to the test split whole, not even a validation slice. That's the realistic deployment
+            case: a generator the model has never seen shows up in the wild. Holding out zero rows of a slice
+            instead of a whole generator would let a hyperparameter choice leak across that boundary.</p>
+          </div>
+        </div>
+
+        <div class="decision">
+          <h4>Report per-generator TPR at a fixed false-positive budget, not just AUROC</h4>
+          <div class="field">
+            <div class="field-label">Why</div>
+            <p>AUROC is threshold-free and rank-based — it describes overall separability, not what happens at the
+            one operating point a moderation system actually runs at. Per-generator AUROC sits in a tight
+            0.97–0.99 band that reads as "uniformly strong." Re-reading the exact same scores at a fixed 1%
+            false-positive budget is what surfaced a 0.35 spread in true-positive rate — a metric change, not a
+            model change, found the real failure mode.</p>
+          </div>
+        </div>
+
+        <div class="decision">
+          <h4>A paired bootstrap for significance, not overlapping confidence intervals</h4>
+          <div class="field">
+            <div class="field-label">Why</div>
+            <p>Two runs' marginal 95% CIs overlapping does not mean their difference is non-significant — that
+            comparison throws away the correlation between the two runs' scores on the same images. Resampling the
+            same 6,810 test images once per replicate and applying that resample to both runs gives a CI on the
+            actual difference, which is what let the augmentation result get reported honestly as "not significant
+            at this N" instead of eyeballed as a tie.</p>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <section id="results">
+      <div class="section-head">
+        <span class="eyebrow">Numbers</span>
+        <h2>The two headline results, visualized</h2>
+      </div>
+
+      <div class="rangebox">
+        <h4>Same model, same test set — AUROC vs. TPR@1%FPR, per generator</h4>
+        <div class="range-row">
+          <div class="range-label"><span>AUROC across all 7 generators</span><span class="num">0.97 – 0.99</span></div>
+          <div class="range-track">
+            <div class="range-fill" style="left:97%; width:2%;"></div>
+          </div>
+        </div>
+        <div class="range-row">
+          <div class="range-label"><span>Clean TPR @ 1% FPR — FLUX.1-dev (held out) to MidJourney (held out)</span><span class="num">0.5375 – 0.8865</span></div>
+          <div class="range-track">
+            <div class="range-fill wide" style="left:53.75%; width:35.1%;"></div>
+          </div>
+        </div>
+        <div class="axis"><span>0.0</span><span>0.25</span><span>0.5</span><span>0.75</span><span>1.0</span></div>
+      </div>
+
+      <div class="rangebox" style="margin-top:24px;">
+        <h4>Augmentation's effect on the primary target (TPR@5%FPR robustness gap)</h4>
+        <div class="range-row">
+          <div class="range-label"><span>Baseline checkpoint</span><span class="num">0.0530</span></div>
+          <div class="range-track"><div class="range-fill" style="left:0%; width:53%;"></div></div>
+        </div>
+        <div class="range-row">
+          <div class="range-label"><span>Augmented checkpoint</span><span class="num">0.0402</span></div>
+          <div class="range-track"><div class="range-fill" style="left:0%; width:40.2%;"></div></div>
+        </div>
+        <div class="axis"><span>0.00</span><span>0.025</span><span>0.05</span><span>0.075</span><span>0.10</span></div>
+
+        <div class="ci-wrap">
+          <div class="range-label"><span>Paired-bootstrap difference (aug − baseline), B=2000, same 6,810 images</span><span class="num">−0.0128</span></div>
+          <div class="ci-track">
+            <div class="ci-zero" style="left:62.5%;"></div>
+            <div class="ci-band" style="left:12.5%; width:64%;"></div>
+            <div class="ci-dot" style="left:36%;"></div>
+          </div>
+          <p class="ci-caption">95% CI [−0.0252, +0.0019] — the band crosses zero, so despite the marginal CIs
+          barely overlapping, the improvement is <strong>not statistically significant</strong> at 810 real test images.</p>
+        </div>
+      </div>
+
+      <p style="margin-top:22px;">Per-generator spread told a different story from the gap: it moved by
+      <span class="num">+0.0021</span>, 95% CI <span class="num">[−0.0508, +0.0429]</span> — also includes zero.
+      FLUX.1-dev was the floor generator before augmentation and stayed the floor after it. Full tables:
+      <code>results/tpr_analysis_aug/report.md</code>, <code>NOTES.md</code> §Phase 4.</p>
+    </section>
+
+    <section id="limits">
+      <div class="section-head">
+        <span class="eyebrow">Stated, not buried</span>
+        <h2>Limitations</h2>
+      </div>
+      <div class="limits">
+        <div class="limit"><span class="mark">01</span><p><strong>810 real test images is the binding constraint</strong>, not the model. Every "not significant" result above is a statement about statistical power at this N — not a claim that the effect is zero. More held-out real images is the single highest-leverage next step.</p></div>
+        <div class="limit"><span class="mark">02</span><p><strong>FLUX.1-dev is the floor generator, and augmentation didn't move it</strong> — same rank, before and after Phase 4. <code>results/error_analysis/</code> looks at what it's actually missing.</p></div>
+        <div class="limit"><span class="mark">03</span><p><strong>No calibration layer.</strong> Scores are a trained sigmoid output, not a calibrated probability. <code>acc@0.5</code> should be read with that in mind; AUROC and TPR@FPR are threshold-free and don't have this problem.</p></div>
+        <div class="limit"><span class="mark">04</span><p><strong>No artifact branch, no degradation-awareness at inference time.</strong> The augmentation sampler computes a per-image degradation label that nothing currently consumes — kept because it was free, in case a fusion gate comes back in scope.</p></div>
+        <div class="limit"><span class="mark">05</span><p><strong>Three held-out generators, not an open set.</strong> "Unseen generator" means these three specifically, not a guarantee about every generator not represented in the eval.</p></div>
+      </div>
+    </section>
+
+    <section id="frontend">
+      <div class="section-head">
+        <span class="eyebrow">For whoever's building the real UI</span>
+        <h2>Where the UI fits — and where it doesn't</h2>
+      </div>
+
+      <div class="callout">
+        <h3><code>app.py</code> is a demo, not the product's frontend</h3>
+        <p>It's a Gradio scratch app whose only job was proving the pitch-video story — upload an image, drag a
+        JPEG-quality slider from 95 down to 30, watch the score move — on the same decode and scoring code the eval
+        grid used, so the demo isn't lying about what the real pipeline does. It was never meant to be styled,
+        extended, or shipped as the product surface, so nothing about disliking its look is a signal to fix
+        <code>app.py</code> — it's a signal to build the real thing against the contract below instead.</p>
+
+        <p>That contract is <code>predict.py</code>: an image directory in, <code>preds.json</code> out, one entry
+        per image, byte-identical output across runs and OSes. It recurses jpg/jpeg/png/webp/bmp, converts anything
+        (grayscale, CMYK, alpha) through the same decode path the eval harness uses, and never crashes on a bad
+        file — a genuine decode failure gets <code>pred: null</code> with a warning on stderr instead of stopping
+        the batch.</p>
+
+        <div class="contract">python predict.py --image_dir path/to/images --out preds.json --ckpt runs/aug.pt
+
+[{"image_path": "path/to/images/foo.jpg", "pred": 0.873},
+ {"image_path": "path/to/images/bar.png", "pred": null}]</div>
+
+        <p style="margin-top:14px;">Two checkpoints are available: <code>runs/baseline.pt</code> (default) and
+        <code>runs/aug.pt</code> (the augmented one — better on the primary robustness target, per the results
+        above). A real frontend should call this contract, or wrap it behind a small API, rather than embedding
+        anything from <code>app.py</code>.</p>
+      </div>
+    </section>
+
+    <footer>
+      <p>Fuller detail than fits here: <a href="PLAN.md">PLAN.md</a> is the original spec, section by section.
+      <a href="NOTES.md">NOTES.md</a> is the running decision log — what was tried, what failed, and why, phase by
+      phase. <a href="HANDOFF.md">HANDOFF.md</a> is the phase-3 brief. <a href="README.md">README.md</a> and
+      <a href="DEVPOST.md">DEVPOST.md</a> are the short, submission-facing versions this page draws from.</p>
+    </footer>
+
+  </main>
+</div>
+
+<script>
+(function(){
+  var links = Array.prototype.slice.call(document.querySelectorAll('[data-toc]'));
+  var sections = links.map(function(a){ return document.querySelector(a.getAttribute('href')); }).filter(Boolean);
+  if(!sections.length || !('IntersectionObserver' in window)) return;
+  var map = new Map();
+  sections.forEach(function(sec, i){ map.set(sec, links[i]); });
+  var observer = new IntersectionObserver(function(entries){
+    entries.forEach(function(entry){
+      var link = map.get(entry.target);
+      if(!link) return;
+      if(entry.isIntersecting){
+        links.forEach(function(l){ l.classList.remove('active'); });
+        link.classList.add('active');
+      }
+    });
+  }, { rootMargin: '-15% 0px -70% 0px', threshold: 0 });
+  sections.forEach(function(sec){ observer.observe(sec); });
+})();
+</script>
