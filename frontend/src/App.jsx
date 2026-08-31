@@ -5,6 +5,7 @@ import {
   FileImage,
   ImageIcon,
   User,
+  PlayCircle,
 } from 'lucide-react'
 import { motion } from 'framer-motion'
 import './index.css'
@@ -166,7 +167,7 @@ export default function App() {
             <div className="hero-actions">
               <button 
                 className="btn-large" 
-                onClick={() => document.getElementById('workspace').scrollIntoView({ behavior: 'smooth' })}
+                onClick={() => document.getElementById('analyzer-tool').scrollIntoView({ behavior: 'smooth' })}
               >
                 Start Analysis
               </button>
@@ -179,7 +180,34 @@ export default function App() {
             </div>
           </motion.div>
 
-          <div className="workspace" id="workspace">
+          <motion.div 
+            className="video-section"
+            initial={{ opacity: 0, y: 30 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.7, delay: 0.2, ease: "easeOut" }}
+          >
+            <div className="video-mockup">
+              <div className="mockup-header">
+                <div className="mockup-dots">
+                  <div className="mockup-dot r"></div>
+                  <div className="mockup-dot y"></div>
+                  <div className="mockup-dot g"></div>
+                </div>
+              </div>
+              <div className="mockup-body" onClick={() => alert("Video player would open here!")}>
+                <PlayCircle size={64} className="play-icon" strokeWidth={1.5} />
+                <span className="semibold">Watch Feature Overview</span>
+              </div>
+            </div>
+          </motion.div>
+
+          <div className="tool-section-wrapper" id="analyzer-tool">
+            <div className="tool-section-header">
+              <h2>Interactive Analyzer</h2>
+              <p>Experience the detection engine live. Upload an image to test.</p>
+            </div>
+            
+            <div className="workspace">
             {/* ── Left Column: Input Panel ───────────────────────────── */}
             <aside className="panel">
               
@@ -372,6 +400,7 @@ export default function App() {
                 )
               })()}
             </main>
+          </div>
           </div>
         </div>
       )}

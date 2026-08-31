@@ -317,6 +317,100 @@ h1, h2, h3 { margin: 0; font-weight: 600; letter-spacing: -0.02em; }
 }
 .btn-secondary:hover { background: var(--accent-soft); }
 
+/* ── Video Mockup & Intro ───────────────────────────────────── */
+
+.video-section {
+  width: 100%;
+  max-width: 900px;
+  margin: 0 auto 80px;
+  padding: 0 24px;
+}
+
+.video-mockup {
+  aspect-ratio: 16 / 9;
+  background: var(--panel-bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-md);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  position: relative;
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.video-mockup:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 12px 24px rgba(0,0,0,0.1);
+}
+
+.mockup-header {
+  height: 36px;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg);
+  display: flex;
+  align-items: center;
+  padding: 0 16px;
+}
+
+.mockup-dots {
+  display: flex;
+  gap: 6px;
+}
+
+.mockup-dot {
+  width: 10px; height: 10px; border-radius: 50%;
+}
+.mockup-dot.r { background: #ff5f56; }
+.mockup-dot.y { background: #ffbd2e; }
+.mockup-dot.g { background: #27c93f; }
+
+.mockup-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  color: var(--text-dim);
+  background: linear-gradient(145deg, var(--bg), var(--panel-bg));
+  cursor: pointer;
+}
+
+.mockup-body .play-icon {
+  color: var(--brand-magenta);
+  transition: transform 0.2s ease, filter 0.2s ease;
+  filter: drop-shadow(0 4px 12px rgba(254, 44, 85, 0.4));
+}
+
+.mockup-body:hover .play-icon {
+  transform: scale(1.1);
+}
+
+.tool-section-wrapper {
+  padding: 80px 24px;
+  background: var(--bg);
+  border-top: 1px solid var(--border);
+  width: 100%;
+}
+
+.tool-section-header {
+  text-align: center;
+  margin-bottom: 48px;
+}
+
+.tool-section-header h2 {
+  font-size: 32px;
+  margin: 0 0 12px 0;
+  letter-spacing: -0.02em;
+}
+
+.tool-section-header p {
+  color: var(--text-dim);
+  font-size: 18px;
+  margin: 0;
+}
+
 /* ── Main Workspace ─────────────────────────────────────────── */
 
 .workspace {

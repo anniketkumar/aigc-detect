@@ -21,15 +21,16 @@ from predict import load_for_scoring
 from src.models.base import load_model
 from src.transforms import t_jpeg, to_rgb
 
-CHECKPOINTS = {"aug": Path("runs/aug.pt"), "baseline": Path("runs/baseline.pt")}
+CHECKPOINTS = {"aug": Path("runs/aug.pt"),
+               "baseline": Path("runs/baseline.pt")}
 MAX_UPLOAD_BYTES = 25 * 1024 * 1024
 _models: dict[Path, object] = {}
 
 app = FastAPI(title="AIGC detector API", docs_url=None, redoc_url=None)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173", "http://127.0.0.1:5173"],
-    allow_methods=["POST"],
+    allow_origins=["*"],
+    allow_methods=["POST", "OPTIONS"],
     allow_headers=["*"],
 )
 
@@ -65,7 +66,8 @@ async def analyze(
     quality: int = Form(95),
 ):
     if checkpoint not in CHECKPOINTS:
-        raise HTTPException(422, "Choose either the augmented or baseline model.")
+        raise HTTPException(
+            422, "Choose either the augmented or baseline model.")
     if not 30 <= quality <= 95:
         raise HTTPException(422, "JPEG quality must be between 30 and 95.")
     payload = await image.read(MAX_UPLOAD_BYTES + 1)
@@ -80,7 +82,8 @@ async def analyze(
         temporary.flush()
         decoded, warning = load_for_scoring(Path(temporary.name))
     if decoded is None:
-        raise HTTPException(422, warning or "This file could not be decoded as an image.")
+        raise HTTPException(
+            422, warning or "This file could not be decoded as an image.")
 
     model = _get_model(checkpoint)
     clean_score = model.score([decoded], ["ui-upload"])[0]
