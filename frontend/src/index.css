@@ -170,6 +170,43 @@ h1, h2, h3 { margin: 0; font-weight: 600; letter-spacing: -0.02em; }
   box-shadow: var(--shadow-sm);
 }
 
+/* ── Dropdown Nav ───────────────────────────────────────────── */
+.nav-dropdown {
+  position: relative;
+  display: inline-block;
+}
+.nav-dropdown-menu {
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%) translateY(10px);
+  background: var(--panel-bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 140px;
+  opacity: 0;
+  visibility: hidden;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: var(--shadow-lg);
+  z-index: 1000;
+}
+.nav-dropdown:hover .nav-dropdown-menu,
+.nav-dropdown:focus-within .nav-dropdown-menu {
+  opacity: 1;
+  visibility: visible;
+  transform: translateX(-50%) translateY(4px);
+}
+.nav-dropdown-menu .nav-btn {
+  width: 100%;
+  text-align: left;
+  display: block;
+}
+
+
 .theme-btn {
   padding: 6px;
   color: var(--text-dim);
@@ -929,6 +966,201 @@ h1, h2, h3 { margin: 0; font-weight: 600; letter-spacing: -0.02em; }
 }
 :root[data-theme="dark"] .share-btn:hover {
   background: rgba(255, 255, 255, 0.1);
+}
+
+/* ── Batch Analyzer ─────────────────────────────────────────── */
+
+.batch-workspace {
+  max-width: 900px;
+  margin: 0 auto;
+}
+
+.batch-file-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 16px 0;
+}
+.batch-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 8px 6px 12px;
+  font-size: 12px;
+  font-family: var(--font-mono);
+  color: var(--text-main);
+  background: var(--panel-bg);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+}
+.batch-chip button {
+  display: grid;
+  place-items: center;
+  padding: 2px;
+  color: var(--text-dim);
+  border-radius: 50%;
+}
+.batch-chip button:hover { color: var(--red); background: var(--red-bg); }
+
+.batch-controls {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+  padding-top: 16px;
+  border-top: 1px solid var(--border);
+}
+
+.batch-results-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 13px;
+  margin: 28px 0 12px;
+}
+
+.batch-table-wrap { overflow-x: auto; }
+.batch-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.batch-table th, .batch-table td {
+  text-align: left;
+  padding: 12px 20px;
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+}
+.batch-table th { color: var(--text-dim); font-weight: 500; font-size: 12px; }
+.batch-table tr:last-child td { border-bottom: none; }
+
+.batch-badge {
+  display: inline-block;
+  padding: 4px 10px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 600;
+}
+.batch-badge.high { color: var(--red); background: var(--red-bg); }
+.batch-badge.mid { color: var(--amber); background: var(--amber-bg); }
+.batch-badge.low { color: var(--green); background: var(--green-bg); }
+.batch-badge.neutral { color: var(--text-dim); background: var(--accent-soft); }
+
+/* ── Safety Guide ───────────────────────────────────────────── */
+/* Larger type, single-column flow, generous spacing — designed to be
+   readable at a glance rather than scanned, since the primary audience
+   is less familiar with spotting AI images than a younger, online-native
+   user would be. */
+
+.safety-guide {
+  max-width: 640px;
+  margin: 0 auto;
+  padding: 64px 24px 96px;
+}
+
+.safety-hero-callout {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  padding: 28px 32px;
+  margin: 0 0 48px;
+  background: var(--red-bg) !important;
+  border-color: var(--red);
+}
+.safety-hero-icon {
+  width: 56px;
+  height: 56px;
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  border-radius: var(--radius-md);
+  background: var(--bg);
+  color: var(--red);
+}
+.safety-hero-label { font-size: 16px; font-weight: 600; color: var(--text-main); margin-bottom: 4px; }
+.safety-hero-number {
+  display: block;
+  font-size: 34px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: var(--red);
+  text-decoration: none;
+  line-height: 1.2;
+}
+.safety-hero-number:hover { text-decoration: underline; }
+.safety-hero-sub { font-size: 15px; color: var(--text-dim); margin-top: 4px; }
+
+.safety-section { margin-bottom: 48px; }
+.safety-section h3 {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 21px;
+  margin: 0 0 24px 0;
+}
+.safety-section h3 svg { color: var(--brand-magenta); flex-shrink: 0; }
+
+.safety-list {
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+}
+.safety-item {
+  display: flex;
+  gap: 14px;
+  align-items: flex-start;
+}
+.safety-item svg { flex-shrink: 0; margin-top: 2px; color: var(--brand-cyan); }
+.safety-item-title { font-size: 17px; font-weight: 600; color: var(--text-main); margin-bottom: 3px; }
+.safety-item-body { font-size: 16px; color: var(--text-dim); line-height: 1.6; }
+
+.safety-reassurance {
+  padding: 28px 32px;
+  margin-bottom: 56px;
+  background: var(--green-bg) !important;
+  border-color: var(--green);
+}
+.safety-reassurance-title { font-size: 19px; font-weight: 700; color: var(--text-main); margin-bottom: 16px; }
+.safety-reassurance ul { margin: 0; padding-left: 22px; display: flex; flex-direction: column; gap: 10px; }
+.safety-reassurance li { font-size: 16px; color: var(--text-main); line-height: 1.5; }
+.safety-reassurance a { color: var(--green); font-weight: 700; text-decoration: underline; }
+
+.safety-more h4 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin: 0 0 20px 0;
+}
+
+.safety-more-group { margin-bottom: 24px; }
+.safety-more-label { font-size: 13px; font-weight: 600; color: var(--text-dim); margin-bottom: 8px; }
+
+.safety-more-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 16px 20px;
+  margin-bottom: 8px;
+  background: var(--panel-bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  text-decoration: none;
+  color: inherit;
+  transition: border-color 0.2s ease, transform 0.2s ease;
+}
+.safety-more-row:hover { border-color: var(--border-hover); transform: translateY(-1px); }
+.safety-more-row-title { font-size: 15px; font-weight: 600; color: var(--text-main); }
+.safety-more-row-body { font-size: 13px; color: var(--text-dim); margin-top: 2px; }
+.safety-more-row svg { flex-shrink: 0; color: var(--text-dim); }
+
+.learn-disclaimer {
+  font-size: 12px;
+  color: var(--text-dim);
+  line-height: 1.6;
+  margin-top: 24px;
 }
 
 /* ── API Docs ───────────────────────────────────────────────── */

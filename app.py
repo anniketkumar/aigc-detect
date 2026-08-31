@@ -25,6 +25,7 @@ from src.transforms import t_jpeg, to_rgb
 CHECKPOINTS = {"aug": Path("runs/aug.pt"),
                "baseline": Path("runs/baseline.pt")}
 MAX_UPLOAD_BYTES = 25 * 1024 * 1024
+MAX_BATCH_FILES = 50
 _models: dict[Path, object] = {}
 
 app = FastAPI(title="AIGC detector API", docs_url=None, redoc_url=None)
@@ -156,3 +157,69 @@ async def analyze(
             "reencoded_preview": _image_data_url(reencoded),
             "ela_preview": _generate_ela_heatmap(decoded, quality),
         })
+
+
+@app.post("/api/analyze-batch")
+async def analyze_batch(
+    images: list[UploadFile] = File(...),
+    checkpoint: str = Form("aug"),
+):
+    """Score many images in one call. Mirrors ``predict.py``'s contract --
+    same decoder, same model, same ``{"image_path", "pred"}`` shape per item
+    -- so a batch scored here and a batch scored by the CLI deliverable never
+    quietly disagree. ``image_path`` is the uploaded filename: browsers don't
+    expose a real directory path, so the identifier is the name, sorted for
+    the same run-to-run determinism ``predict.py`` guarantees.
+    """
+    if checkpoint not in CHECKPOINTS:
+        raise HTTPException(
+            422, "Choose either the augmented or baseline model.")
+    if not images:
+        raise HTTPException(422, "Choose at least one image file to analyze.")
+    if len(images) > MAX_BATCH_FILES:
+        raise HTTPException(
+            413, f"Batch is limited to {MAX_BATCH_FILES} images at a time.")
+
+    images = sorted(images, key=lambda f: f.filename or "")
+    model = _get_model(checkpoint)
+
+    results: list[dict] = [None] * len(images)
+    pending_warnings: dict[int, str | None] = {}
+    batch_imgs, batch_names, batch_slots = [], [], []
+
+    for i, image in enumerate(images):
+        name = image.filename or f"image_{i}"
+        payload = await image.read(MAX_UPLOAD_BYTES + 1)
+        if len(payload) > MAX_UPLOAD_BYTES:
+            results[i] = {"image_path": name, "pred": None,
+                          "warning": "File exceeds 25 MB limit."}
+            continue
+        if not payload:
+            results[i] = {"image_path": name, "pred": None,
+                          "warning": "Empty file."}
+            continue
+
+        suffix = Path(name).suffix or ".img"
+        with tempfile.NamedTemporaryFile(suffix=suffix) as temporary:
+            temporary.write(payload)
+            temporary.flush()
+            decoded, warning = load_for_scoring(Path(temporary.name))
+        if decoded is None:
+            results[i] = {"image_path": name, "pred": None, "warning": warning}
+            continue
+
+        batch_imgs.append(decoded)
+        batch_names.append(name)
+        batch_slots.append(i)
+        pending_warnings[i] = warning
+
+    if batch_imgs:
+        scores = model.score(batch_imgs, batch_names)
+        for slot, name, score in zip(batch_slots, batch_names, scores):
+            results[slot] = {
+                "image_path": name,
+                "pred": None if score is None else float(score),
+                "warning": pending_warnings.get(slot),
+            }
+
+    return JSONResponse({"checkpoint": checkpoint, "results": results})

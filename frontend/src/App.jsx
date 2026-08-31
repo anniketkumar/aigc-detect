@@ -12,6 +12,12 @@ import {
   Info,
   Share2,
   CheckCircle2,
+  Eye,
+  ShieldAlert,
+  Landmark,
+  Phone,
+  ExternalLink,
+  ChevronDown,
 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import './index.css'
@@ -23,6 +29,8 @@ const CHECKPOINTS = {
   baseline: 'Baseline',
 }
 
+const BATCH_LIMIT = 50
+
 /* ── Helpers ────────────────────────────────────────────────── */
 
 function classify(score) {
@@ -31,7 +39,6 @@ function classify(score) {
   if (score >= 0.4) return { verdict: 'Inconclusive', detail: 'The image has mixed signals. It may be heavily edited or AI-generated.', tone: 'mid', isAI: false }
   return { verdict: 'Likely Authentic', detail: 'We found very few synthetic indicators. This appears to be a human-made image.', tone: 'low', isAI: false }
 }
-
 
 async function generateShareCard(imageSrc, verdict, score, tone, isAI) {
   return new Promise((resolve, reject) => {
@@ -42,37 +49,42 @@ async function generateShareCard(imageSrc, verdict, score, tone, isAI) {
     canvas.height = height;
     const ctx = canvas.getContext('2d');
 
-    // Background
-    ctx.fillStyle = '#0F0F13';
+    // Rich Dark Gradient Background
+    const bgGradient = ctx.createLinearGradient(0, 0, width, height);
+    bgGradient.addColorStop(0, '#09090b');
+    bgGradient.addColorStop(1, '#18181b');
+    ctx.fillStyle = bgGradient;
     ctx.fillRect(0, 0, width, height);
 
     // Glowing Orbs
-    ctx.filter = 'blur(150px)';
-    ctx.fillStyle = 'rgba(254, 44, 85, 0.4)'; // Magenta
-    ctx.beginPath(); ctx.arc(200, 300, 450, 0, Math.PI*2); ctx.fill();
-    ctx.fillStyle = 'rgba(37, 244, 238, 0.4)'; // Cyan
-    ctx.beginPath(); ctx.arc(900, 1600, 500, 0, Math.PI*2); ctx.fill();
+    ctx.filter = 'blur(200px)';
+    ctx.fillStyle = tone === 'high' ? 'rgba(254, 44, 85, 0.5)' : tone === 'mid' ? 'rgba(245, 166, 35, 0.4)' : 'rgba(37, 244, 238, 0.4)';
+    ctx.beginPath(); ctx.arc(300, 400, 600, 0, Math.PI*2); ctx.fill();
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.1)';
+    ctx.beginPath(); ctx.arc(800, 1500, 500, 0, Math.PI*2); ctx.fill();
     ctx.filter = 'none';
 
-    // Grid pattern
-    ctx.strokeStyle = 'rgba(255, 255, 255, 0.03)';
-    ctx.lineWidth = 2;
-    for(let i=0; i<width; i+=80) {
+    // HUD Grid pattern
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.04)';
+    ctx.lineWidth = 1;
+    for(let i=0; i<width; i+=60) {
       ctx.beginPath(); ctx.moveTo(i, 0); ctx.lineTo(i, height); ctx.stroke();
     }
-    for(let i=0; i<height; i+=80) {
+    for(let i=0; i<height; i+=60) {
       ctx.beginPath(); ctx.moveTo(0, i); ctx.lineTo(width, i); ctx.stroke();
     }
 
     const img = new Image();
     img.crossOrigin = "anonymous";
     img.onload = () => {
-      // Draw Title
+      // Header Brand
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
-      ctx.font = 'bold 50px sans-serif';
+      ctx.font = '800 45px "Inter", sans-serif';
       ctx.fillStyle = '#FFFFFF';
-      ctx.fillText('ImageSignal Analysis', width/2, 120);
+      ctx.letterSpacing = '5px';
+      ctx.fillText('IMAGESIGNAL', width/2, 120);
+      ctx.letterSpacing = '0px';
 
       // Fixed Image Box Bounds
       const boxW = 860;
@@ -80,49 +92,74 @@ async function generateShareCard(imageSrc, verdict, score, tone, isAI) {
       const boxX = (width - boxW) / 2;
       const boxY = 220; 
 
-      // Draw Glassmorphic Box behind image
-      ctx.fillStyle = 'rgba(255, 255, 255, 0.05)';
-      ctx.fillRect(boxX, boxY, boxW, boxH);
+      // Glassmorphic Image Container
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.03)';
+      if (ctx.roundRect) {
+        ctx.beginPath(); ctx.roundRect(boxX, boxY, boxW, boxH, 40); ctx.fill();
+      } else {
+        ctx.fillRect(boxX, boxY, boxW, boxH);
+      }
       
       const accentColor = tone === 'high' ? '#FE2C55' : tone === 'mid' ? '#F5A623' : '#25F4EE';
       ctx.strokeStyle = accentColor;
-      ctx.lineWidth = 6;
-      ctx.strokeRect(boxX, boxY, boxW, boxH);
+      ctx.lineWidth = 4;
+      if (ctx.roundRect) {
+        ctx.beginPath(); ctx.roundRect(boxX, boxY, boxW, boxH, 40); ctx.stroke();
+      } else {
+        ctx.strokeRect(boxX, boxY, boxW, boxH);
+      }
 
-      // Calculate Image Scaling (contain within box)
-      let imgW = img.width;
-      let imgH = img.height;
-      const ratio = Math.min(boxW/imgW, boxH/imgH);
-      imgW = imgW * ratio;
-      imgH = imgH * ratio;
+      // HUD Corner Brackets
+      const bLen = 60;
+      ctx.lineWidth = 8;
+      ctx.strokeStyle = '#FFFFFF';
+      const drawBracket = (x, y, dx, dy) => {
+        ctx.beginPath(); ctx.moveTo(x+dx, y); ctx.lineTo(x, y); ctx.lineTo(x, y+dy); ctx.stroke();
+      };
+      drawBracket(boxX-20, boxY-20, bLen, bLen);
+      drawBracket(boxX+boxW+20, boxY-20, -bLen, bLen);
+      drawBracket(boxX-20, boxY+boxH+20, bLen, -bLen);
+      drawBracket(boxX+boxW+20, boxY+boxH+20, -bLen, -bLen);
+
+      // Image clipping mask (so image honors border radius)
+      ctx.save();
+      if (ctx.roundRect) {
+        ctx.beginPath(); ctx.roundRect(boxX, boxY, boxW, boxH, 40); ctx.clip();
+      }
+
+      // Calculate Image Scaling (cover within box)
+      const ratio = Math.max(boxW/img.width, boxH/img.height);
+      const imgW = img.width * ratio;
+      const imgH = img.height * ratio;
       const imgX = boxX + (boxW - imgW) / 2;
       const imgY = boxY + (boxH - imgH) / 2; 
 
-      // Draw actual image centered inside the box
       ctx.drawImage(img, imgX, imgY, imgW, imgH);
+      ctx.restore();
 
-      // Verdict
-      ctx.font = '900 100px sans-serif';
+      // Verdict Label
+      ctx.font = '800 110px "Inter", sans-serif';
       ctx.fillStyle = accentColor;
-      ctx.fillText(verdict.toUpperCase(), width/2, 1240, 960); // 960 prevents horizontal clipping
+      ctx.shadowColor = accentColor;
+      ctx.shadowBlur = 30;
+      ctx.fillText(verdict.toUpperCase(), width/2, 1260, 960);
+      ctx.shadowBlur = 0; // reset
 
-      // Score
-      ctx.font = 'bold 45px sans-serif';
-      ctx.fillStyle = '#AAAAAA';
-      ctx.fillText('AI SIGNAL SCORE', width/2, 1420);
+      // Score Text
+      ctx.font = '600 40px "JetBrains Mono", monospace';
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
+      ctx.fillText('CONFIDENCE SCORE', width/2, 1420);
       
-      ctx.font = '900 200px sans-serif';
+      ctx.font = '900 240px "Inter", sans-serif';
       ctx.fillStyle = '#FFFFFF';
       ctx.fillText(`${score}%`, width/2, 1600);
 
       // Footer
-      ctx.font = '500 35px sans-serif';
+      ctx.font = '500 32px "Inter", sans-serif';
       ctx.fillStyle = 'rgba(255,255,255,0.4)';
-      ctx.fillText('Scan generated by ImageSignal Analyzer', width/2, 1840);
+      ctx.fillText('Verify authenticity at imagesignal.app', width/2, 1820);
 
-      canvas.toBlob((blob) => {
-        resolve(blob);
-      }, 'image/png');
+      canvas.toBlob((blob) => resolve(blob), 'image/png');
     };
     img.onerror = reject;
     img.src = imageSrc;
@@ -259,8 +296,18 @@ function Header({ theme, onToggleTheme, currentView, setView }) {
       <div className="nav-links">
         <button className={`nav-btn ${currentView === 'home' ? 'active' : ''}`} onClick={() => setView('home')}>Home</button>
         <button className={`nav-btn ${currentView === 'tool' ? 'active' : ''}`} onClick={() => setView('transition')}>Analyzer</button>
-        <button className={`nav-btn ${currentView === 'brief' ? 'active' : ''}`} onClick={() => setView('brief')}>Project Brief</button>
-        <button className={`nav-btn ${currentView === 'api' ? 'active' : ''}`} onClick={() => setView('api')}>API Docs</button>
+        <button className={`nav-btn ${currentView === 'batch' ? 'active' : ''}`} onClick={() => setView('batch')}>Batch</button>
+        <button className={`nav-btn ${currentView === 'learn' ? 'active' : ''}`} onClick={() => setView('learn')}>Safety Guide</button>
+        
+        <div className="nav-dropdown">
+          <button className={`nav-btn ${(currentView === 'brief' || currentView === 'api') ? 'active' : ''}`} style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+            Developer <ChevronDown size={14} />
+          </button>
+          <div className="nav-dropdown-menu">
+            <button className={`nav-btn ${currentView === 'brief' ? 'active' : ''}`} onClick={() => setView('brief')}>Project Brief</button>
+            <button className={`nav-btn ${currentView === 'api' ? 'active' : ''}`} onClick={() => setView('api')}>API Docs</button>
+          </div>
+        </div>
       </div>
       <button className="theme-btn" onClick={onToggleTheme} title="Toggle Dark Mode">
         {theme === 'dark' ? 'Light Mode' : 'Dark Mode'}
@@ -284,7 +331,7 @@ function ApiDocs() {
             <span className="method">POST</span>
             <span className="path">/api/analyze</span>
           </div>
-          <p>Analyzes an image and returns probability scores, compression metrics, and visual previews.</p>
+          <p>Analyzes a single image and returns probability scores, compression metrics, and visual previews.</p>
           
           <h3 style={{marginTop: 32}}>Parameters (FormData)</h3>
           <table className="api-table">
@@ -307,6 +354,11 @@ function ApiDocs() {
                 <td>Integer</td>
                 <td>JPEG quality level for re-encoding step (30-95). Default: <code>95</code>.</td>
               </tr>
+              <tr>
+                <td><code>fast_mode</code></td>
+                <td>Boolean</td>
+                <td>If true, skips generating base64 visual previews to save memory and bandwidth. Default: <code>false</code>.</td>
+              </tr>
             </tbody>
           </table>
 
@@ -317,11 +369,56 @@ function ApiDocs() {
   "quality": 95,
   "clean_score": 0.054, 
   "reencoded_score": 0.048, 
-  "jpeg_kb": 124.5,
+  "jpeg_kb": 124.5, // Only if fast_mode=false
   "warning": null,
-  "clean_preview": "data:image/jpeg;base64,...",
-  "reencoded_preview": "data:image/jpeg;base64,...",
-  "ela_preview": "data:image/jpeg;base64,..."
+  "clean_preview": "data:image/jpeg;base64,...", // Only if fast_mode=false
+  "reencoded_preview": "data:image/jpeg;base64,...", // Only if fast_mode=false
+  "ela_preview": "data:image/jpeg;base64,..." // Only if fast_mode=false
+}`}
+          </pre>
+        </div>
+
+        <div className="api-endpoint" style={{ marginTop: '48px' }}>
+          <div className="endpoint-header">
+            <span className="method">POST</span>
+            <span className="path">/api/analyze-batch</span>
+          </div>
+          <p>Scores many images in one call. Mirrors the CLI tool's behavior and returns an array of scores.</p>
+          
+          <h3 style={{marginTop: 32}}>Parameters (FormData)</h3>
+          <table className="api-table">
+            <thead>
+              <tr><th>Name</th><th>Type</th><th>Description</th></tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><code>images</code></td>
+                <td>File[]</td>
+                <td>Array of image files to analyze (Max 25MB each). Browsers don't expose paths, so the identifier is the filename.</td>
+              </tr>
+              <tr>
+                <td><code>checkpoint</code></td>
+                <td>String</td>
+                <td>Model checkpoint to use. Options: <code>aug</code> (default), <code>baseline</code>.</td>
+              </tr>
+            </tbody>
+          </table>
+
+          <h3>Response</h3>
+          <pre className="code-block">
+{`{
+  "results": [
+    {
+      "image_path": "DSC001.jpg",
+      "pred": 0.054,
+      "warning": null
+    },
+    {
+      "image_path": "screenshot.png",
+      "pred": 0.982,
+      "warning": null
+    }
+  ]
 }`}
           </pre>
         </div>
@@ -422,6 +519,328 @@ function StressTestChart({ data }) {
   );
 }
 
+/* ── Batch Analyzer ─────────────────────────────────────────── */
+
+function BatchView() {
+  const [files, setFiles] = useState([])
+  const [checkpoint, setCheckpoint] = useState('aug')
+  const [results, setResults] = useState(null)
+  const [status, setStatus] = useState('idle')
+  const [error, setError] = useState('')
+  const inputRef = useRef(null)
+
+  const addFiles = (fileList) => {
+    const incoming = Array.from(fileList).filter((f) => /\.(jpe?g|png|webp|bmp)$/i.test(f.name))
+    if (!incoming.length) return
+    setFiles((prev) => {
+      const seen = new Set()
+      return [...prev, ...incoming]
+        .filter((f) => {
+          const key = `${f.name}:${f.size}`
+          if (seen.has(key)) return false
+          seen.add(key)
+          return true
+        })
+        .slice(0, BATCH_LIMIT)
+    })
+    setResults(null)
+    setStatus('idle')
+    setError('')
+  }
+
+  const removeFile = (name) => {
+    setFiles((prev) => prev.filter((f) => f.name !== name))
+    setResults(null)
+    setStatus('idle')
+  }
+
+  const clearAll = () => {
+    setFiles([])
+    setResults(null)
+    setStatus('idle')
+    setError('')
+    if (inputRef.current) inputRef.current.value = ''
+  }
+
+  const runBatch = async () => {
+    if (!files.length) return
+    setStatus('loading')
+    setError('')
+    const form = new FormData()
+    files.forEach((f) => form.append('images', f))
+    form.append('checkpoint', checkpoint)
+    try {
+      const res = await fetch('/api/analyze-batch', { method: 'POST', body: form })
+      const body = await res.json()
+      if (!res.ok) throw new Error(body.detail || 'Batch analysis failed.')
+      setResults(body.results)
+      setStatus('done')
+    } catch (caught) {
+      setStatus('error')
+      setError(caught.message)
+    }
+  }
+
+  const downloadJson = () => {
+    if (!results) return
+    const preds = results.map((r) => ({ image_path: r.image_path, pred: r.pred }))
+    const blob = new Blob([JSON.stringify(preds, null, 2)], { type: 'application/json' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = 'preds.json'
+    a.click()
+    URL.revokeObjectURL(url)
+  }
+
+  return (
+    <div className="tool-section-wrapper batch-view" style={{ paddingTop: '40px', paddingBottom: '80px' }}>
+      <div className="tool-section-header">
+        <h2>Batch Analyzer</h2>
+        <p>The same scoring pipeline as <code>predict.py</code> — upload a folder of images at once and export the identical <code>preds.json</code> shape.</p>
+      </div>
+
+      <div className="batch-workspace">
+        <div
+          className={`drop-target${files.length ? ' active' : ''}`}
+          onDragOver={(e) => e.preventDefault()}
+          onDrop={(e) => { e.preventDefault(); addFiles(e.dataTransfer.files) }}
+          onClick={() => inputRef.current?.click()}
+          style={{ cursor: 'pointer' }}
+        >
+          <input ref={inputRef} type="file" multiple accept="image/jpeg,image/png,image/webp,image/bmp" onChange={(e) => addFiles(e.target.files)} />
+          <FileImage size={32} className="dim" />
+          <div className="semibold">Click or drag images here</div>
+          <div className="dim" style={{ fontSize: 12 }}>
+            {files.length ? `${files.length} file${files.length === 1 ? '' : 's'} queued` : `JPG, PNG, WebP, BMP — up to ${BATCH_LIMIT} at a time`}
+          </div>
+        </div>
+
+        {files.length > 0 && (
+          <>
+            <div className="batch-file-chips">
+              {files.map((f) => (
+                <span className="batch-chip" key={`${f.name}:${f.size}`}>
+                  {f.name}
+                  <button onClick={() => removeFile(f.name)} title="Remove"><X size={12} /></button>
+                </span>
+              ))}
+            </div>
+
+            <div className="batch-controls">
+              <div className="segmented-control" style={{ width: 300, padding: '6px' }}>
+                {Object.entries(CHECKPOINTS).map(([k, v]) => (
+                  <button key={k} className={`seg-btn${checkpoint === k ? ' active' : ''}`} style={{ padding: '10px 16px', fontSize: '14px' }} onClick={() => setCheckpoint(k)}>{v}</button>
+                ))}
+              </div>
+              <div style={{ display: 'flex', gap: 12 }}>
+                <button className="btn-clear" style={{ width: 'auto', margin: 0 }} onClick={clearAll}>Clear</button>
+                <button className="btn-primary" style={{ width: 'auto', padding: '10px 24px' }} onClick={runBatch} disabled={status === 'loading'}>
+                  {status === 'loading' ? 'Analyzing…' : `Analyze ${files.length} Image${files.length === 1 ? '' : 's'}`}
+                </button>
+              </div>
+            </div>
+          </>
+        )}
+
+        {error && <div style={{ color: 'var(--red)', fontSize: 13, marginTop: 12 }}>{error}</div>}
+
+        {results && status === 'done' && (
+          <>
+            <div className="batch-results-header">
+              <span className="dim">{results.length} scored &middot; {results.filter((r) => r.pred == null).length} unreadable</span>
+              <button className="btn-secondary" style={{ padding: '10px 20px', fontSize: 13 }} onClick={downloadJson}>Download preds.json</button>
+            </div>
+            <div className="batch-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: '24px', marginTop: '24px' }}>
+              {results.map((r) => {
+                const { verdict, tone } = classify(r.pred)
+                const file = files.find(f => f.name === r.image_path)
+                const imgUrl = file ? URL.createObjectURL(file) : null
+                
+                const scoreColor = tone === 'high' ? 'var(--red)' : tone === 'mid' ? 'var(--orange)' : 'var(--brand-cyan)'
+
+                return (
+                  <div className="card" key={r.image_path} style={{ overflow: 'hidden', padding: 0, display: 'flex', flexDirection: 'column' }}>
+                    <div style={{ width: '100%', height: '160px', backgroundColor: 'var(--bg)', position: 'relative' }}>
+                      {imgUrl ? (
+                        <img src={imgUrl} alt={r.image_path} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                      ) : (
+                        <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><FileImage className="dim" /></div>
+                      )}
+                      {r.warning && (
+                        <div style={{ position: 'absolute', top: 8, right: 8, background: 'rgba(0,0,0,0.7)', padding: '4px', borderRadius: '4px' }} title={r.warning}>
+                          <AlertTriangle size={14} color="var(--orange)" />
+                        </div>
+                      )}
+                    </div>
+                    <div style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                        <div>
+                          <div style={{ fontSize: '11px', textTransform: 'uppercase', color: 'var(--text-dim)', letterSpacing: '0.05em', marginBottom: '4px' }}>AI Signal</div>
+                          <div style={{ fontSize: '24px', fontWeight: 'bold', color: scoreColor, lineHeight: 1 }}>
+                            {r.pred == null ? '—' : `${(r.pred * 100).toFixed(1)}%`}
+                          </div>
+                        </div>
+                        <span className={`batch-badge ${tone}`} style={{ margin: 0 }}>{verdict}</span>
+                      </div>
+                      <div className="mono dim" style={{ fontSize: '11px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={r.image_path}>
+                        {r.image_path}
+                      </div>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          </>
+        )}
+      </div>
+    </div>
+  )
+}
+
+/* ── Safety Guide ───────────────────────────────────────────── */
+
+const VISUAL_TELLS = [
+  { title: 'Look at the hands', body: 'Extra or missing fingers, or fingers that bend the wrong way.' },
+  { title: 'Look at the writing', body: 'Signs, labels or captions that are blurry or spelled oddly.' },
+  { title: 'Look at the background', body: 'Patterns that repeat, or objects that blend into each other.' },
+  { title: 'Look at the skin', body: 'Skin that looks too smooth and even, almost like plastic.' },
+]
+
+const SCAM_PATTERNS = [
+  { title: 'A new online "friend" or partner', body: 'Chats for weeks using an attractive photo, then asks for money.' },
+  { title: 'A "celebrity" investment tip', body: 'A familiar face in a photo or video promotes a stock or crypto deal.' },
+  { title: 'An urgent message from "family"', body: 'A photo or voice note asks for money right away and says not to tell anyone.' },
+  { title: 'A too-good online listing', body: 'Product photos look perfect, but nothing arrives after you pay.' },
+]
+
+const REPORT_RESOURCES = [
+  {
+    title: 'ScamShield Helpline',
+    body: 'Free, 24 hours a day. Call to check if something is a scam.',
+    url: 'https://www.scamshield.gov.sg/',
+    linkLabel: 'scamshield.gov.sg',
+  },
+  {
+    title: 'Singapore Police Force',
+    body: 'File a police report or read about current scams.',
+    url: 'https://www.police.gov.sg/Advisories/Scams',
+    linkLabel: 'police.gov.sg/Advisories/Scams',
+  },
+]
+
+const LEARN_RESOURCES = [
+  {
+    title: 'CSA GoSafeOnline',
+    body: 'Government tips for staying safe online.',
+    url: 'https://www.csa.gov.sg/gosafeonline',
+  },
+  {
+    title: 'How Singapore law protects you',
+    body: 'Police can now freeze a scam victim’s bank transfers, and take down scam websites and fake profiles.',
+    url: 'https://sso.agc.gov.sg/Act/PSA2025',
+  },
+  {
+    title: "Singapore's rules on deepfakes",
+    body: 'How the government is responding to AI-faked photos and videos.',
+    url: 'https://www.imda.gov.sg/resources/blog/blog-articles/2024/07/3-things-sg-do-to-take-action-against-deepfakes',
+  },
+]
+
+function LearnView() {
+  return (
+    <div className="tool-section-wrapper safety-guide">
+      <div className="tool-section-header" style={{ maxWidth: 640 }}>
+        <h2>Spot AI Images &amp; Scams</h2>
+        <p>A simple guide to what to look for, and who to call if something feels wrong.</p>
+      </div>
+
+      <div className="card safety-hero-callout">
+        <div className="safety-hero-icon"><Phone size={28} /></div>
+        <div>
+          <div className="safety-hero-label">Think you're being scammed?</div>
+          <a href="tel:1799" className="safety-hero-number">Call 1799</a>
+          <div className="safety-hero-sub">ScamShield Helpline &middot; free &middot; 24 hours a day</div>
+        </div>
+      </div>
+
+      <section className="safety-section">
+        <h3><Eye size={22} /> 4 signs a photo might be fake</h3>
+        <div className="safety-list">
+          {VISUAL_TELLS.map((t) => (
+            <div className="safety-item" key={t.title}>
+              <CheckCircle2 size={20} />
+              <div>
+                <div className="safety-item-title">{t.title}</div>
+                <div className="safety-item-body">{t.body}</div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      <section className="safety-section">
+        <h3><ShieldAlert size={22} /> Tricks that use fake photos</h3>
+        <div className="safety-list">
+          {SCAM_PATTERNS.map((t) => (
+            <div className="safety-item" key={t.title}>
+              <AlertTriangle size={20} />
+              <div>
+                <div className="safety-item-title">{t.title}</div>
+                <div className="safety-item-body">{t.body}</div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      <div className="card safety-reassurance">
+        <div className="safety-reassurance-title">If you're not sure, slow down</div>
+        <ul>
+          <li>Don't send money or personal details.</li>
+          <li>Talk to someone you trust before you act.</li>
+          <li>Call <a href="tel:1799">1799</a> to check — it's free.</li>
+        </ul>
+      </div>
+
+      <section className="safety-more">
+        <h4><Landmark size={16} /> Where to get help &amp; learn more</h4>
+
+        <div className="safety-more-group">
+          <div className="safety-more-label">Report a scam</div>
+          {REPORT_RESOURCES.map((r) => (
+            <a key={r.title} className="safety-more-row" href={r.url} target="_blank" rel="noopener noreferrer">
+              <div>
+                <div className="safety-more-row-title">{r.title}</div>
+                <div className="safety-more-row-body">{r.body}</div>
+              </div>
+              <ExternalLink size={16} />
+            </a>
+          ))}
+        </div>
+
+        <div className="safety-more-group">
+          <div className="safety-more-label">Learn more</div>
+          {LEARN_RESOURCES.map((r) => (
+            <a key={r.title} className="safety-more-row" href={r.url} target="_blank" rel="noopener noreferrer">
+              <div>
+                <div className="safety-more-row-title">{r.title}</div>
+                <div className="safety-more-row-body">{r.body}</div>
+              </div>
+              <ExternalLink size={16} />
+            </a>
+          ))}
+        </div>
+
+        <p className="learn-disclaimer">
+          This is general information for Singapore, not legal advice. Rules
+          can change, so check the links above for the latest details.
+        </p>
+      </section>
+    </div>
+  )
+}
+
 export default function App() {
   const [theme, setTheme] = useState(() =>
     localStorage.getItem('aigc-theme') ||
@@ -437,6 +856,7 @@ export default function App() {
   const [deepScan, setDeepScan] = useState(false)
   const [modalImage, setModalImage] = useState(null) // { type: 'image' | 'heatmap', src: string }
   const [shareCopied, setShareCopied] = useState(false)
+  const [shareModal, setShareModal] = useState(null)
   const [stressData, setStressData] = useState(null)
   const [stressStatus, setStressStatus] = useState('idle')
   const [stressProgress, setStressProgress] = useState(0) // idle, loading, done, error
@@ -550,6 +970,67 @@ export default function App() {
 
   return (
     <div className="app-container">
+      <AnimatePresence>
+        {shareModal && (
+          <motion.div
+            className="modal-overlay"
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            onClick={(e) => {
+              if (e.target === e.currentTarget) {
+                URL.revokeObjectURL(shareModal.url);
+                setShareModal(null);
+              }
+            }}
+          >
+            <motion.div
+              className="modal-content"
+              initial={{ scale: 0.95, opacity: 0, y: 20 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.95, opacity: 0, y: 20 }}
+              style={{ maxWidth: 400, background: 'var(--panel-bg)', borderRadius: 'var(--radius-lg)', padding: '24px', display: 'flex', flexDirection: 'column', alignItems: 'center', border: '1px solid var(--border)', zIndex: 9999 }}
+            >
+              <h3 style={{ margin: '0 0 16px 0' }}>Share Result</h3>
+              <img src={shareModal.url} alt="Share Preview" style={{ width: '100%', borderRadius: 'var(--radius-md)', border: '1px solid var(--border)', marginBottom: '24px' }} />
+              
+              <div style={{ display: 'flex', gap: '12px', width: '100%' }}>
+                <button 
+                  className="btn-secondary" 
+                  style={{ flex: 1, padding: '12px' }}
+                  onClick={() => {
+                    URL.revokeObjectURL(shareModal.url);
+                    setShareModal(null);
+                  }}
+                >
+                  Cancel
+                </button>
+                <button 
+                  className="btn-primary" 
+                  style={{ flex: 1, padding: '12px', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '8px' }}
+                  onClick={async () => {
+                    if (navigator.canShare && navigator.canShare(shareModal.shareData)) {
+                      try {
+                        await navigator.share(shareModal.shareData);
+                      } catch (err) {
+                        console.error('Share failed:', err);
+                      }
+                    } else {
+                      const a = document.createElement('a');
+                      a.href = shareModal.url;
+                      a.download = 'imagesignal-verdict.png';
+                      a.click();
+                    }
+                    URL.revokeObjectURL(shareModal.url);
+                    setShareModal(null);
+                  }}
+                >
+                  <Share2 size={16} /> Share Image
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {modalImage && (
         <div className="modal-overlay" onClick={() => setModalImage(null)}>
           <div className="modal-content" onClick={e => e.stopPropagation()}>
@@ -655,6 +1136,32 @@ export default function App() {
               style={{ flex: 1, overflowY: 'auto' }}
             >
               <ApiDocs />
+            </motion.div>
+          )}
+
+          {view === 'batch' && (
+            <motion.div
+              key="batch"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+              transition={{ duration: 0.4, ease: 'easeInOut' }}
+              style={{ flex: 1, overflowY: 'auto' }}
+            >
+              <BatchView />
+            </motion.div>
+          )}
+
+          {view === 'learn' && (
+            <motion.div
+              key="learn"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+              transition={{ duration: 0.4, ease: 'easeInOut' }}
+              style={{ flex: 1, overflowY: 'auto' }}
+            >
+              <LearnView />
             </motion.div>
           )}
 
@@ -787,32 +1294,22 @@ export default function App() {
                 const position = result.reencoded_score != null ? result.reencoded_score * 100 : 50
 
                 const handleShare = async () => {
-                  setShareCopied(true); // Temporary visual feedback
+                  setShareCopied(true);
                   try {
                     const blob = await generateShareCard(result.clean_preview, verdict, scoreVal, tone, isAI);
                     const file = new File([blob], 'imagesignal-verdict.png', { type: 'image/png' });
+                    const url = URL.createObjectURL(blob);
                     
                     const shareData = {
                       title: 'ImageSignal Analysis',
                       text: `ImageSignal detected this image is ${scoreVal}% likely to be ${isAI ? 'AI-Generated' : 'Authentic'}!`,
                       files: [file]
                     };
-
-                    if (navigator.canShare && navigator.canShare(shareData)) {
-                      await navigator.share(shareData);
-                      setTimeout(() => setShareCopied(false), 2000);
-                    } else {
-                      // Fallback: Download the image
-                      const url = URL.createObjectURL(blob);
-                      const a = document.createElement('a');
-                      a.href = url;
-                      a.download = 'imagesignal-verdict.png';
-                      a.click();
-                      URL.revokeObjectURL(url);
-                      setTimeout(() => setShareCopied(false), 2000);
-                    }
+                    
+                    setShareModal({ url, shareData, blob });
                   } catch (err) {
-                    console.error('Failed to generate or share image', err);
+                    console.error('Failed to generate share image', err);
+                  } finally {
                     setShareCopied(false);
                   }
                 };
