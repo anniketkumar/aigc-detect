@@ -1231,3 +1231,9 @@ h1, h2, h3 { margin: 0; font-weight: 600; letter-spacing: -0.02em; }
   font-size: 13px;
   border: 1px solid rgba(255,255,255,0.1);
 }
+
+@media (max-width: 1000px) {
+  .floating-badge {
+    display: none !important;
+  }
+}

@@ -17,6 +17,9 @@ import {
   Landmark,
   Phone,
   ExternalLink,
+  Zap,
+  ShieldCheck,
+  Activity,
   ChevronDown,
 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
@@ -841,6 +844,130 @@ function LearnView() {
   )
 }
 
+
+/* ── Interactive Hero Demo ──────────────────────────────────── */
+function HeroDemo() {
+  return (
+    <div className="hero-demo-container" style={{ perspective: '1200px', width: '100%', maxWidth: '800px', margin: '40px auto', height: '400px', position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      
+      {/* Moving Trail Border Wrapper */}
+      <motion.div
+        animate={{ rotateY: [-5, 5, 10, -5], rotateX: [2, 5, 0, 2] }}
+        transition={{ duration: 8, repeat: Infinity, ease: "easeInOut" }}
+        style={{
+          width: '100%', height: '100%', position: 'relative',
+          transformStyle: 'preserve-3d',
+          borderRadius: 'var(--radius-lg)',
+          padding: '2px', // Space for the moving border
+          overflow: 'hidden'
+        }}
+      >
+        {/* The glowing conic gradient background that rotates */}
+        <motion.div
+          animate={{ rotate: [0, 360] }}
+          transition={{ duration: 4, repeat: Infinity, ease: "linear" }}
+          style={{
+            position: 'absolute', top: '-50%', left: '-50%', width: '200%', height: '200%',
+            background: 'conic-gradient(from 0deg, transparent 70%, var(--brand-cyan) 80%, var(--red) 100%)',
+            zIndex: 0
+          }}
+        />
+
+        {/* The actual inner window */}
+        <div
+          className="demo-window"
+          style={{
+            width: '100%', height: '100%', background: '#09090b',
+            borderRadius: 'calc(var(--radius-lg) - 2px)',
+            boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.8), inset 0 1px 0 rgba(255,255,255,0.1)', overflow: 'hidden',
+            display: 'flex', flexDirection: 'column', position: 'relative', zIndex: 1
+          }}
+        >
+          <div style={{ height: '32px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', padding: '0 16px', gap: '8px', background: 'rgba(255,255,255,0.02)' }}>
+            <div style={{ width: 10, height: 10, borderRadius: '50%', background: '#FE2C55' }} />
+            <div style={{ width: 10, height: 10, borderRadius: '50%', background: '#F5A623' }} />
+            <div style={{ width: 10, height: 10, borderRadius: '50%', background: '#25F4EE' }} />
+          </div>
+          
+          <div style={{ display: 'flex', flex: 1, padding: '24px', gap: '24px' }}>
+            {/* Fake Sidebar */}
+            <div style={{ width: '30%', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              <div style={{ width: '100%', height: '120px', background: 'rgba(255,255,255,0.03)', borderRadius: 'var(--radius-md)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                 <ImageIcon color="var(--text-dim)" size={32} />
+              </div>
+              
+              <motion.button 
+                className="btn-primary" 
+                style={{ padding: '12px', fontSize: '14px', position: 'relative', overflow: 'hidden' }}
+                animate={{ scale: [1, 1, 0.92, 1, 1], background: ['var(--brand-cyan)', 'var(--brand-cyan)', '#1BA5A1', 'var(--brand-cyan)', 'var(--brand-cyan)'] }}
+                transition={{ duration: 4, repeat: Infinity, times: [0, 0.4, 0.45, 0.5, 1], ease: "easeInOut" }}
+              >
+                Analyze Image
+                <motion.div 
+                  style={{ position: 'absolute', top: '50%', left: '50%', width: '100%', height: '100%', background: 'rgba(255,255,255,0.4)', borderRadius: '50%', x: '-50%', y: '-50%' }}
+                  animate={{ scale: [0, 0, 2, 0, 0], opacity: [0, 0, 1, 0, 0] }}
+                  transition={{ duration: 4, repeat: Infinity, times: [0, 0.45, 0.46, 0.6, 1] }}
+                />
+              </motion.button>
+              <div style={{ width: '100%', height: '8px', background: 'rgba(255,255,255,0.03)', borderRadius: '4px' }} />
+              <div style={{ width: '80%', height: '8px', background: 'rgba(255,255,255,0.03)', borderRadius: '4px' }} />
+            </div>
+
+            {/* Fake Dashboard */}
+            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              <motion.div 
+                style={{ width: '100%', padding: '20px', background: 'rgba(254, 44, 85, 0.1)', borderRadius: 'var(--radius-md)', border: '1px solid rgba(254, 44, 85, 0.2)' }}
+                animate={{ opacity: [0, 0, 1, 1, 0], y: [10, 10, 0, 0, 10] }}
+                transition={{ duration: 4, repeat: Infinity, times: [0, 0.55, 0.65, 0.9, 1], ease: "easeOut" }}
+              >
+                <div style={{ color: '#FE2C55', fontWeight: 'bold', fontSize: '14px', marginBottom: '8px' }}>Likely AI-Generated</div>
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <span style={{ fontSize: '12px', color: 'var(--text-dim)' }}>AI Signal Score</span>
+                  <span style={{ fontSize: '12px', color: '#FE2C55', fontWeight: 'bold' }}>92.4%</span>
+                </div>
+              </motion.div>
+              
+              <div style={{ display: 'flex', gap: '16px', flex: 1 }}>
+                <div style={{ flex: 1, background: 'rgba(255,255,255,0.02)', borderRadius: 'var(--radius-md)', border: '1px solid var(--border)' }} />
+                <div style={{ flex: 1, background: 'rgba(255,255,255,0.02)', borderRadius: 'var(--radius-md)', border: '1px solid var(--border)' }} />
+              </div>
+            </div>
+          </div>
+
+          {/* Animated Cursor */}
+          <motion.div
+            style={{
+              position: 'absolute',
+              zIndex: 100,
+              width: '28px',
+              height: '28px',
+              pointerEvents: 'none',
+              filter: 'drop-shadow(0 4px 6px rgba(0,0,0,0.5))'
+            }}
+            animate={{ 
+              x: ['400px', '130px', '130px', '400px', '400px'],
+              y: ['300px', '180px', '180px', '300px', '300px'],
+              scale: [1, 1, 0.7, 1, 1]
+            }}
+            transition={{ duration: 4, repeat: Infinity, times: [0, 0.4, 0.45, 0.5, 1], ease: "easeInOut" }}
+          >
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+              <path d="m3 3 7.07 16.97 2.51-7.39 7.39-2.51L3 3z" fill="black" />
+            </svg>
+            
+            {/* Ripple Click Effect */}
+            <motion.div
+              style={{ position: 'absolute', top: '4px', left: '4px', width: '20px', height: '20px', border: '2px solid white', borderRadius: '50%' }}
+              animate={{ scale: [0, 0, 2.5, 0, 0], opacity: [0, 0, 0.8, 0, 0] }}
+              transition={{ duration: 4, repeat: Infinity, times: [0, 0.44, 0.45, 0.6, 1] }}
+            />
+          </motion.div>
+        </div>
+      </motion.div>
+    </div>
+  )
+}
+
 export default function App() {
   const [theme, setTheme] = useState(() =>
     localStorage.getItem('aigc-theme') ||
@@ -1086,13 +1213,13 @@ export default function App() {
               transition={{ duration: 0.4, ease: 'easeInOut' }}
               style={{ flex: 1, display: 'flex', flexDirection: 'column' }}
             >
-              <div className="hero-section">
-                <h1 className="hero-title">Detect AI-Generated Images with <span>Confidence</span></h1>
-                <p className="hero-subtitle">
+              <div className="hero-section" style={{ position: 'relative', width: '100%', minHeight: '40vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+                <h1 className="hero-title" style={{ position: 'relative', zIndex: 20 }}>Detect AI-Generated Images with <span>Confidence</span></h1>
+                <p className="hero-subtitle" style={{ position: 'relative', zIndex: 20 }}>
                   Instantly analyze images to determine if they were synthetically generated or human-made, 
                   using state-of-the-art model checkpointing and compression forensics.
                 </p>
-                <div className="hero-actions">
+                <div className="hero-actions" style={{ position: 'relative', zIndex: 20 }}>
                   <button 
                     className="btn-large" 
                     onClick={() => setView('transition')}
@@ -1108,20 +1235,8 @@ export default function App() {
                 </div>
               </div>
 
-              <div className="video-section">
-                <div className="video-mockup">
-                  <div className="mockup-header">
-                    <div className="mockup-dots">
-                      <div className="mockup-dot r"></div>
-                      <div className="mockup-dot y"></div>
-                      <div className="mockup-dot g"></div>
-                    </div>
-                  </div>
-                  <div className="mockup-body" onClick={() => alert("Video player would open here!")}>
-                    <PlayCircle size={64} className="play-icon" strokeWidth={1.5} />
-                    <span className="semibold">Watch Feature Overview</span>
-                  </div>
-                </div>
+              <div className="video-section" style={{ overflow: 'hidden' }}>
+                <HeroDemo />
               </div>
             </motion.div>
           )}
