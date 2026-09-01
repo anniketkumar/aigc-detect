@@ -32,7 +32,20 @@ embedding still traces to a source file) and one extra array is written:
     degradation.npy  (N*K, 12) float32 -- src.data.augment.DegradationLabel
                       vectors, one per embedded copy; free supervision for a
                       future degradation head (PLAN.md §7.2), unused today
-                      (Phase 5 is cut, HANDOFF.md) but cheap to keep.
+                      (Phase 5 was cut, HANDOFF.md) but cheap to keep.
+
+Phase 5, resumed: ``--fuse-freq`` appends ``src.features.frequency``'s
+deterministic Fourier/DCT feature vector (see that module's docstring) onto
+every embedding before it is saved, so ``embeddings.npy`` becomes
+``(N, clip_embed_dim + FREQ_DIM)`` instead of ``(N, clip_embed_dim)``.
+``src/train.py`` needs no change to consume this -- it already reads
+``embed_dim`` off the array's own shape -- but the resulting checkpoint must
+be scored with ``clip_freq_fusion``, not ``clip_linear``
+(``src/models/clip_fusion.py``). Composable with ``--augment-copies``: each
+augmented copy gets its own frequency features computed on its own (already
+degraded) pixels, same as the CLIP embedding does, which is the entire point
+-- a frequency branch that only ever sees clean pixels would never be
+measured under the JPEG/blur/resize conditions it's meant to survive.
 """
 
 from __future__ import annotations
@@ -70,11 +83,15 @@ def cache_split(
     progress: bool = True,
     augment_copies: int = 0,
     augment_seed: int = 0,
+    fuse_freq: bool = False,
 ) -> dict:
     from src.models.clip_backbone import BACKBONE, PRETRAINED, ClipBackbone
 
     if augment_copies < 0:
         raise ValueError(f"augment_copies must be >= 0, got {augment_copies}")
+
+    if fuse_freq:
+        from src.features.frequency import FREQ_DIM, extract_frequency_features
 
     # Resolved here, not as an argument default, so the import stays deferred:
     # one place decides the backbone (src/models/clip_backbone.py) and no
@@ -125,7 +142,11 @@ def cache_split(
                 ok_labels.append(int(label))
                 ok_paths.append(str(path))
         if imgs:
-            feats.append(clip.embed(imgs))
+            batch_feats = clip.embed(imgs)
+            if fuse_freq:
+                freq = np.stack([extract_frequency_features(img) for img in imgs])
+                batch_feats = np.concatenate([batch_feats, freq], axis=1)
+            feats.append(batch_feats)
             labels.extend(ok_labels)
             paths.extend(ok_paths)
         bar.update(len(chunk))
@@ -148,13 +169,16 @@ def cache_split(
         "manifest": str(manifest),
         "backbone": backbone,
         "pretrained": pretrained,
-        "embed_dim": clip.embed_dim,
+        "clip_embed_dim": clip.embed_dim,
+        "embed_dim": embeddings.shape[1],  # = clip_embed_dim (+ FREQ_DIM if fuse_freq)
         "n_images": len(paths),
         "n_failed": n_failed,
         "n_real": int((labels_arr == 0).sum()),
         "n_ai": int((labels_arr == 1).sum()),
         "augment_copies": augment_copies,
         "augment_seed": augment_seed if augment_copies else None,
+        "fuse_freq": fuse_freq,
+        "freq_dim": FREQ_DIM if fuse_freq else 0,
         "elapsed_s": round(time.time() - t0, 1),
     }
     (out / "meta.json").write_text(json.dumps(meta, indent=2), encoding="utf-8")
@@ -183,13 +207,18 @@ def main(argv: list[str] | None = None) -> int:
                           "caching). See src.data.augment.")
     ap.add_argument("--augment-seed", type=int, default=0,
                      help="base seed for --augment-copies (default 0)")
+    ap.add_argument("--fuse-freq", action="store_true",
+                     help="Phase 5: append src.features.frequency's Fourier/DCT "
+                          "feature vector onto every embedding (0 = off, plain "
+                          "CLIP-only caching). Score the resulting checkpoint "
+                          "with --model clip_freq_fusion, not clip_linear.")
     a = ap.parse_args(argv)
 
     cache_split(
         a.manifest, a.out, device=a.device, backbone=a.backbone,
         pretrained=a.pretrained, batch_size=a.batch_size, limit=a.limit,
         progress=not a.quiet, augment_copies=a.augment_copies,
-        augment_seed=a.augment_seed,
+        augment_seed=a.augment_seed, fuse_freq=a.fuse_freq,
     )
     return 0
 

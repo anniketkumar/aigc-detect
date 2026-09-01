@@ -47,6 +47,7 @@ MODEL_REGISTRY: dict[str, str] = {
     "dummy_random": "src.models.dummy:RandomScorer",
     "dummy_brightness": "src.models.dummy:BrightnessScorer",
     "clip_linear": "src.models.clip_baseline:CLIPLinearScorer",
+    "clip_freq_fusion": "src.models.clip_fusion:CLIPFreqFusionScorer",
 }
 
 

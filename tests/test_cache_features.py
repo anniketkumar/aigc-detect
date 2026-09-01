@@ -155,6 +155,79 @@ def test_negative_augment_copies_rejected(tmp_path):
         CF.cache_split(manifest, tmp_path / "out", device="cpu", augment_copies=-1)
 
 
+# --------------------------------------------------------------------------- #
+# Frequency fusion path (Phase 5, resumed)
+# --------------------------------------------------------------------------- #
+
+def test_fuse_freq_widens_embeddings_by_freq_dim(tmp_path):
+    from src.features.frequency import FREQ_DIM
+
+    manifest = _make_manifest(tmp_path, n=3)
+    out = tmp_path / "out_fused"
+    meta = CF.cache_split(manifest, out, device="cpu", fuse_freq=True)
+
+    emb = np.load(out / "embeddings.npy")
+    assert emb.shape == (3, EMBED_DIM + FREQ_DIM)
+    assert meta["clip_embed_dim"] == EMBED_DIM
+    assert meta["embed_dim"] == EMBED_DIM + FREQ_DIM
+    assert meta["fuse_freq"] is True
+    assert meta["freq_dim"] == FREQ_DIM
+
+
+def test_fuse_freq_off_by_default_matches_plain_shape(tmp_path):
+    """The additive flag must not change anything about the default path --
+    same shape and same meta fields Phase 3/4 already depend on."""
+    manifest = _make_manifest(tmp_path, n=3)
+    out = tmp_path / "out_plain"
+    meta = CF.cache_split(manifest, out, device="cpu")
+
+    emb = np.load(out / "embeddings.npy")
+    assert emb.shape == (3, EMBED_DIM)
+    assert meta["clip_embed_dim"] == EMBED_DIM
+    assert meta["embed_dim"] == EMBED_DIM
+    assert meta["fuse_freq"] is False
+    assert meta["freq_dim"] == 0
+
+
+def test_fuse_freq_composes_with_augmentation(tmp_path):
+    """Each augmented copy gets frequency features computed on its own
+    (already-degraded) pixels -- the whole point of the branch."""
+    from src.features.frequency import FREQ_DIM
+
+    manifest = _make_manifest(tmp_path, n=2)
+    out = tmp_path / "out_fused_aug"
+    meta = CF.cache_split(manifest, out, device="cpu", augment_copies=3,
+                           augment_seed=0, fuse_freq=True)
+
+    emb = np.load(out / "embeddings.npy")
+    assert emb.shape == (6, EMBED_DIM + FREQ_DIM)  # 2 images * 3 copies
+    assert meta["fuse_freq"] is True
+
+
+def test_fuse_freq_reproducible_across_runs(tmp_path):
+    manifest = _make_manifest(tmp_path, n=2)
+    out_a, out_b = tmp_path / "a", tmp_path / "b"
+    CF.cache_split(manifest, out_a, device="cpu", fuse_freq=True)
+    CF.cache_split(manifest, out_b, device="cpu", fuse_freq=True)
+    assert np.array_equal(np.load(out_a / "embeddings.npy"), np.load(out_b / "embeddings.npy"))
+
+
+def test_cli_accepts_fuse_freq_flag(tmp_path):
+    from src.features.frequency import FREQ_DIM
+
+    manifest = _make_manifest(tmp_path, n=2)
+    out = tmp_path / "out_cli_fused"
+    rc = CF.main([
+        "--manifest", str(manifest), "--out", str(out), "--device", "cpu",
+        "--fuse-freq", "--quiet",
+    ])
+    assert rc == 0
+    meta = json.loads((out / "meta.json").read_text())
+    assert meta["fuse_freq"] is True
+    emb = np.load(out / "embeddings.npy")
+    assert emb.shape == (2, EMBED_DIM + FREQ_DIM)
+
+
 def test_cli_accepts_augment_flags(tmp_path):
     manifest = _make_manifest(tmp_path, n=2)
     out = tmp_path / "out_cli"
