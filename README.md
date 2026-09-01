@@ -1,4 +1,6 @@
-# Robust AIGC Image Detection
+# Image Signal
+
+*Robust AIGC Image Detection — TikTok TechJam 2026*
 
 > Detectors don't fail because AI images are hard to spot. They fail because
 > aggregate metrics hide where they actually break, and JPEG re-encoding,
@@ -21,7 +23,13 @@ simplest model that could work, not the original full design. The plan
 called for an artifact branch, a degradation head and a fusion gate (Phase
 5) plus post-hoc calibration (Phase 6); both were cut once measurement
 showed the eval harness and the augmentation ablation mattered more than
-architecture at this budget (PLAN.md §13's effort ranking). What shipped:
+architecture at this budget (PLAN.md §13's effort ranking). Phase 5 was
+later reopened once a cheap measurement (the aesthetic-probe check, below)
+gave a concrete reason to expect fusion would pay off — the branch is now
+built and unit-tested, but a real trained-and-evaluated result needs a
+full-scale Colab run we don't expect to land before submission, so it ships
+as scoped, ready-to-run future work rather than a finished ablation row (see
+"What's next"). What shipped:
 
 | Phase | State |
 |---|---|
@@ -29,8 +37,8 @@ architecture at this budget (PLAN.md §13's effort ranking). What shipped:
 | 2 — leak-audited data pipeline | done |
 | 3 — CLIP linear-probe baseline | done |
 | 4 — training-time augmentation | done |
-| 5 — artifact branch + fusion gate | **cut** — not enough budget to earn its row in the ablation table |
-| 6 — calibration | **cut** — same reason |
+| 5 — artifact branch + fusion gate | **built, not yet evaluated at scale** — reopened after the aesthetic-probe measurement, code + tests done, full-scale run is future work |
+| 6 — calibration | **cut** — not enough budget to earn its row in the ablation table |
 | 7 — `predict.py`, `app.py` | done |
 
 ## Headline results
@@ -149,7 +157,7 @@ changing quality does not reload the backbone.
 **Reproduce the measurement layer:**
 
 ```bash
-python -m pytest                                          # 324 tests
+python -m pytest                                          # 355 tests
 python -m src.evaluate --ckpt runs/aug.pt --split test --out results/aug/
 python -m scripts.tpr_gap_analysis --run baseline results/baseline/scores.csv \
     --run aug results/aug/scores.csv \
@@ -175,11 +183,21 @@ python -m scripts.error_analysis   # results/error_analysis/
   calibrated probabilities — `acc@0.5` in the eval reports should be read
   with that in mind; AUROC/TPR@FPR are threshold-free and don't have this
   problem.
-- **No artifact branch, no degradation-awareness at inference time.** The
-  model is a single frozen-backbone linear probe. The augmentation sampler
+- **`predict.py`/`app.py` still run the single frozen-backbone linear
+  probe, not the fusion branch.** `src/models/clip_fusion.py`
+  (`clip_freq_fusion`) concatenates 12 FFT radial-energy rings + 3 block-DCT
+  band energies onto the CLIP embedding and is built, unit-tested, and
+  validated end-to-end on a 113-image local smoke manifest — but that's
+  pipeline correctness only, not a real signal on whether fusion helps (the
+  smoke fusion checkpoint actually scored *below* smoke baseline on that
+  tiny slice, read as noise from the toy sample size, not a result). No
+  trained `clip_freq_fusion` checkpoint is shipped, so it's not wired into
+  either deliverable. A full ~18.2k-image Colab run — already staged in
+  `scripts/colab_setup.ipynb` — is the next step and is scoped as future
+  work, not expected before submission. The augmentation sampler separately
   computes a `DegradationLabel` per training image (which families fired, at
   what severity) that nothing currently consumes — kept because it was
-  free, in case a fusion gate comes back in scope.
+  free, in case a degradation head comes back in scope alongside fusion.
 - **Three held-out generators, not an open set.** MidJourney, Gemini
   (nano-banana) and FLUX.1-dev are held fully out of training, but "unseen
   generator" here means these three specifically, not a guarantee about
@@ -204,3 +222,16 @@ python -m scripts.error_analysis   # results/error_analysis/
   Advanced half has no standalone distribution and ships only inside
   WildFake's ~700GB ModelScope archives, so we could not report a number on
   it within bandwidth constraints.
+
+## What's next
+
+Two extensions, in order of ROI, if this continues past submission — full
+writeup in [DEVPOST.md](DEVPOST.md#whats-next):
+
+1. **Run the Phase 5 fusion branch (`clip_freq_fusion`) at full scale.**
+   Code, tests, and the Colab notebook cells are done; only the ~18.2k-image
+   training run is outstanding, and that run is the actual result.
+2. **More held-out real images.** 810 is the binding constraint behind both
+   "not significant at this N" findings above (the augmentation gap, the
+   per-generator spread) — a larger real pool sharpens existing numbers
+   rather than adding new ones.
