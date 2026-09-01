@@ -44,7 +44,6 @@ JPEG/blur/resize or collapses under it.
 
 from __future__ import annotations
 
-import cv2
 import numpy as np
 from PIL import Image
 
@@ -83,6 +82,54 @@ _SCALE = np.array(
 )
 assert _SCALE.shape == (FREQ_DIM,)
 
+# --------------------------------------------------------------------------- #
+# Precomputed, image-independent constants
+# --------------------------------------------------------------------------- #
+# Both the radial-ring geometry and the DCT band assignment depend only on
+# _SIZE/_N_RINGS/_DCT_BLOCK, all fixed -- so they're built once here instead
+# of being recomputed (mgrid, sqrt, per-ring boolean masks, ...) on every
+# single image. This is a units-of-work fix, not a numerics change: outputs
+# match the original per-image-recomputed version to float32 precision
+# (see tests/test_frequency_features.py's equivalence checks and the
+# ad-hoc benchmark in NOTES.md -- ~2.4x faster end to end, no GPU needed
+# because the bottleneck was Python-loop overhead, not raw FLOPs).
+
+_h = _w = _SIZE
+_cy, _cx = _h / 2.0, _w / 2.0
+_yy, _xx = np.mgrid[0:_h, 0:_w]
+_R = np.sqrt((_yy - _cy) ** 2 + (_xx - _cx) ** 2)
+_R_MAX = float(min(_cy, _cx))
+# _N_RINGS+2 edges: bin 0 (edges[0]..edges[1]) is the DC-dominated innermost
+# ring and is deliberately excluded from _RING_IDX (-1) -- it tracks average
+# brightness, not a generator fingerprint.
+_EDGES = np.linspace(0.0, _R_MAX, _N_RINGS + 2)
+_RING_IDX = np.full(_R.shape, -1, dtype=np.int16)
+for _i in range(_N_RINGS):
+    _RING_IDX[(_R >= _EDGES[_i + 1]) & (_R < _EDGES[_i + 2])] = _i
+_OUTER_MASK = (_R >= _EDGES[-2]).ravel()
+_RING_IDX_FLAT = _RING_IDX.ravel()
+_RING_VALID = _RING_IDX_FLAT >= 0
+_RING_IDX_VALID = _RING_IDX_FLAT[_RING_VALID]
+_RING_COUNTS = np.bincount(_RING_IDX_VALID, minlength=_N_RINGS).astype(np.float32)
+del _h, _w, _cy, _cx, _yy, _xx, _R, _R_MAX, _EDGES, _i, _RING_IDX, _RING_IDX_FLAT
+
+# Orthonormal DCT-II basis, analytic (matches cv2.dct to ~1e-7, float32) --
+# 2D block DCT is separable: dct2d(block) == _DCT_BASIS @ block @ _DCT_BASIS.T
+_dct_n = np.arange(_DCT_BLOCK)
+_dct_k = _dct_n.reshape(-1, 1)
+_DCT_BASIS = (
+    np.sqrt(2.0 / _DCT_BLOCK) * np.cos(np.pi * (2 * _dct_n + 1) * _dct_k / (2 * _DCT_BLOCK))
+).astype(np.float32)
+_DCT_BASIS[0, :] *= 1.0 / np.sqrt(2.0)
+del _dct_n, _dct_k
+
+_dct_ii, _dct_jj = np.mgrid[0:_DCT_BLOCK, 0:_DCT_BLOCK]
+_dct_band = _dct_ii + _dct_jj  # 0 = DC; up to 14 = highest-frequency corner
+_DCT_LOW_MASK = (_dct_band > 0) & (_dct_band <= 4)
+_DCT_MID_MASK = (_dct_band > 4) & (_dct_band <= 9)
+_DCT_HIGH_MASK = _dct_band > 9
+del _dct_ii, _dct_jj, _dct_band
+
 
 def _to_gray(img: Image.Image) -> np.ndarray:
     g = img.convert("L").resize((_SIZE, _SIZE), Image.Resampling.BICUBIC)
@@ -91,26 +138,19 @@ def _to_gray(img: Image.Image) -> np.ndarray:
 
 def _radial_fft_features(gray: np.ndarray) -> np.ndarray:
     spec = np.fft.fftshift(np.fft.fft2(gray))
-    mag = np.log1p(np.abs(spec))
-    h, w = mag.shape
-    cy, cx = h / 2.0, w / 2.0
-    yy, xx = np.mgrid[0:h, 0:w]
-    r = np.sqrt((yy - cy) ** 2 + (xx - cx) ** 2)
-    r_max = float(min(cy, cx))
+    mag = np.log1p(np.abs(spec)).ravel()
 
-    # _N_RINGS+2 edges: bin 0 (edges[0]..edges[1]) is the DC-dominated
-    # innermost ring and is deliberately skipped -- it tracks average
-    # brightness, not a generator fingerprint.
-    edges = np.linspace(0.0, r_max, _N_RINGS + 2)
-    rings = np.zeros(_N_RINGS, dtype=np.float32)
-    for i in range(_N_RINGS):
-        lo, hi = edges[i + 1], edges[i + 2]
-        mask = (r >= lo) & (r < hi)
-        rings[i] = float(mag[mask].mean()) if mask.any() else 0.0
+    # Ring-averaged magnitude via bincount against the precomputed ring
+    # index -- one pass over the flattened spectrum instead of _N_RINGS
+    # separate boolean-mask passes.
+    sums = np.bincount(_RING_IDX_VALID, weights=mag[_RING_VALID], minlength=_N_RINGS)
+    rings = np.divide(
+        sums, _RING_COUNTS, out=np.zeros(_N_RINGS, dtype=np.float32),
+        where=_RING_COUNTS > 0,
+    ).astype(np.float32)
 
     total = float(mag.sum())
-    outer_mask = r >= edges[-2]
-    hf_ratio = float(mag[outer_mask].sum() / total) if total > 0 else 0.0
+    hf_ratio = float(mag[_OUTER_MASK].sum() / total) if total > 0 else 0.0
 
     # peakiness: how far the strongest ring stands out from the ring-to-ring
     # mean, in ring-std units. A smoothly decaying spectrum (real camera
@@ -124,7 +164,13 @@ def _radial_fft_features(gray: np.ndarray) -> np.ndarray:
 
 def _dct_band_features(gray: np.ndarray) -> np.ndarray:
     """Mean |DCT| energy in low/mid/high triangular bands, averaged over
-    every non-overlapping 8x8 block -- the same block grid JPEG uses."""
+    every non-overlapping 8x8 block -- the same block grid JPEG uses.
+
+    Vectorized: one batched matrix multiply against the precomputed DCT-II
+    basis for all blocks at once, instead of one cv2.dct() Python call per
+    block (~1024 blocks at 256x256 -- that loop's interpreter overhead, not
+    FLOPs, was the actual cost; see the module's precomputed-constants note).
+    """
     h, w = gray.shape
     h8, w8 = (h // _DCT_BLOCK) * _DCT_BLOCK, (w // _DCT_BLOCK) * _DCT_BLOCK
     g = gray[:h8, :w8]
@@ -134,16 +180,12 @@ def _dct_band_features(gray: np.ndarray) -> np.ndarray:
         .transpose(0, 2, 1, 3)
         .reshape(-1, _DCT_BLOCK, _DCT_BLOCK)
     )
-    energies = np.empty((blocks.shape[0], _DCT_BLOCK, _DCT_BLOCK), dtype=np.float32)
-    for i in range(blocks.shape[0]):
-        energies[i] = np.abs(cv2.dct(blocks[i]))
-    mean_energy = energies.mean(axis=0)  # (8, 8), index (0,0) = DC
+    dct = _DCT_BASIS @ blocks @ _DCT_BASIS.T  # (n_blocks, 8, 8), broadcast matmul
+    mean_energy = np.abs(dct).mean(axis=0)  # (8, 8), index (0,0) = DC
 
-    ii, jj = np.mgrid[0:_DCT_BLOCK, 0:_DCT_BLOCK]
-    band = ii + jj  # 0 = DC; up to 14 = highest-frequency corner
-    low = float(mean_energy[(band > 0) & (band <= 4)].mean())
-    mid = float(mean_energy[(band > 4) & (band <= 9)].mean())
-    high = float(mean_energy[band > 9].mean())
+    low = float(mean_energy[_DCT_LOW_MASK].mean())
+    mid = float(mean_energy[_DCT_MID_MASK].mean())
+    high = float(mean_energy[_DCT_HIGH_MASK].mean())
     return np.array([low, mid, high], dtype=np.float32)
 
 
