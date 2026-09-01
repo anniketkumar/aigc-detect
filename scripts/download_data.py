@@ -34,6 +34,7 @@ import csv
 import hashlib
 import io
 import json
+import os
 import random
 import sys
 import time
@@ -48,6 +49,20 @@ from src.data.normalize import NormalizeConfig, QualityPrior, normalize
 from src.data.sources import SOURCES, BY_NAME, Source, estimate_footprint
 
 PARQUET_URL = "https://datasets-server.huggingface.co/parquet"
+
+
+def _hf_headers() -> dict[str, str]:
+    """``Authorization`` header for Hugging Face, if a token is available.
+
+    Both the datasets-server listing below and the resolved CDN URLs it
+    returns count against HF's per-IP anonymous rate limit, which is what
+    makes an unauthenticated Colab download slow. Reads ``HF_TOKEN`` --  the
+    name ``huggingface_hub.login()`` and Colab's Secrets pane both use -- so
+    setting the one secret speeds up both request paths. Empty dict (i.e. no
+    header) when unset, which is exactly the previous unauthenticated behavior.
+    """
+    token = os.environ.get("HF_TOKEN")
+    return {"Authorization": f"Bearer {token}"} if token else {}
 
 LEDGER_FIELDS = [
     "image_path", "label", "generator", "family", "source_dataset", "split_hint",
@@ -70,7 +85,8 @@ def list_shards(src: Source, timeout: int = 120) -> list[str]:
     split name that is a date). The endpoint knows; a glob pattern would need
     per-repo special cases and would break silently when one changed.
     """
-    r = requests.get(PARQUET_URL, params={"dataset": src.repo}, timeout=timeout)
+    r = requests.get(PARQUET_URL, params={"dataset": src.repo}, timeout=timeout,
+                      headers=_hf_headers())
     r.raise_for_status()
     files = [
         f for f in r.json()["parquet_files"]
@@ -343,7 +359,8 @@ def _http_file(url: str):
     re-resolve them on every read.
     """
     import fsspec
-    return fsspec.open(url, "rb", block_size=8 * 1024 * 1024).open()
+    return fsspec.open(url, "rb", block_size=8 * 1024 * 1024,
+                        headers=_hf_headers()).open()
 
 
 # --------------------------------------------------------------------------- #
