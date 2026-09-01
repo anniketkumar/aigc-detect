@@ -22,7 +22,7 @@ import {
   Activity,
   ChevronDown,
 } from 'lucide-react'
-import { motion, AnimatePresence } from 'framer-motion'
+import { motion, AnimatePresence, useScroll, useTransform } from 'framer-motion'
 import './index.css'
 
 /* ── Constants ──────────────────────────────────────────────── */
@@ -324,6 +324,317 @@ function Header({ theme, onToggleTheme, currentView, setView }) {
   )
 }
 
+
+
+
+/* ── TikTok Integration Mockup ──────────────────────────────────────── */
+function TikTokAnimatedMockup({ isPaused = false }) {
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '100%', height: '100%', gap: '64px', flexWrap: 'wrap' }}>
+      
+      {!isPaused && (
+        <div style={{ flex: '1 1 300px', maxWidth: '400px' }}>
+          <h2 style={{ fontSize: '32px', marginBottom: '24px', background: 'linear-gradient(90deg, var(--brand-cyan), var(--text-main))', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
+            Seamless Social Integration
+          </h2>
+          <p style={{ color: 'var(--text-dim)', fontSize: '16px', lineHeight: '1.6', marginBottom: '24px' }}>
+            ImageSignal is designed to run passively behind the scenes of major social platforms, normalizing millions of uploads without slowing down the feed.
+          </p>
+          <ul style={{ display: 'flex', flexDirection: 'column', gap: '16px', color: 'var(--text-main)' }}>
+            <li style={{ display: 'flex', gap: '16px', alignItems: 'center', background: 'rgba(255,255,255,0.02)', padding: '12px 16px', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.05)' }}>
+              <Scan color="var(--brand-cyan)" size={20} />
+              <span style={{ fontSize: '14px', fontWeight: '500' }}>Passive Scanning Pipeline</span>
+            </li>
+            <li style={{ display: 'flex', gap: '16px', alignItems: 'center', background: 'rgba(255,255,255,0.02)', padding: '12px 16px', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.05)' }}>
+              <Bot color="#FE2C55" size={20} />
+              <span style={{ fontSize: '14px', fontWeight: '500' }}>Automated Feed Tagging</span>
+            </li>
+            <li style={{ display: 'flex', gap: '16px', alignItems: 'center', background: 'rgba(255,255,255,0.02)', padding: '12px 16px', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.05)' }}>
+              <Activity color="#F5A623" size={20} />
+              <span style={{ fontSize: '14px', fontWeight: '500' }}>Forensic Transparency UI</span>
+            </li>
+          </ul>
+        </div>
+      )}
+
+      {/* Mobile Device Frame */}
+      <div style={{ 
+        width: '280px', height: '560px', background: '#000', borderRadius: '32px', 
+        border: '10px solid #222', position: 'relative', overflow: 'hidden',
+        boxShadow: '0 25px 50px -12px rgba(0,0,0,0.5)', flexShrink: 0
+      }}>
+        {/* Scrolling Feed Container */}
+        <motion.div 
+          style={{ width: '100%', height: '200%', display: 'flex', flexDirection: 'column' }}
+          animate={isPaused ? { y: '-50%' } : { y: ['0%', '0%', '-50%', '-50%'] }}
+          transition={{ duration: 8, times: [0, 0.15, 0.25, 1], ease: "easeInOut" }}
+        >
+          {/* Video 1 (Real) */}
+          <div style={{ width: '100%', height: '50%', position: 'relative', background: '#111' }}>
+            <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(45deg, #2a2a2a, #1a1a1a)' }} />
+            <div style={{ position: 'absolute', bottom: '40px', left: '16px', color: '#fff' }}>
+              <div style={{ fontWeight: 'bold', fontSize: '16px' }}>@skater_boi</div>
+              <div style={{ fontSize: '14px', marginTop: '4px' }}>Kickflip down the 12 stair! 🛹 🔥</div>
+            </div>
+          </div>
+          
+          {/* Video 2 (AI Generated) */}
+          <div style={{ width: '100%', height: '50%', position: 'relative' }}>
+            <div style={{ position: 'absolute', inset: 0, background: 'url(/demo.jpg) center/cover', opacity: 0.8 }} />
+            <div style={{ position: 'absolute', bottom: '40px', left: '16px', right: '80px', display: 'flex', flexDirection: 'column', gap: '8px', color: '#fff', textShadow: '0 1px 2px rgba(0,0,0,0.5)' }}>
+              <div style={{ fontWeight: 'bold', fontSize: '16px' }}>@ai_creator</div>
+              <div style={{ fontSize: '14px', lineHeight: '1.4' }}>Check out this amazing cyberpunk city I rendered! 🏙️🚀</div>
+              
+              <motion.div 
+                style={{ 
+                  background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(10px)', 
+                  border: '1px solid rgba(255,255,255,0.2)', borderRadius: '4px',
+                  padding: '6px 10px', display: 'flex', alignItems: 'center', gap: '6px',
+                  color: '#fff', width: 'fit-content', marginTop: '4px', transformOrigin: 'left center'
+                }}
+                animate={isPaused ? { scale: 1 } : { scale: [1, 1, 0.9, 1, 1] }}
+                transition={{ duration: 8, times: [0, 0.44, 0.45, 0.48, 1] }}
+              >
+                <Bot size={14} color="#25F4EE" />
+                <span style={{ fontSize: '12px', fontWeight: '500' }}>AI-Generated Image</span>
+                <ChevronDown size={14} style={{ opacity: 0.6 }} />
+              </motion.div>
+            </div>
+          </div>
+        </motion.div>
+
+        {/* Static Overlay */}
+        <div style={{ position: 'absolute', top: '32px', left: 0, right: 0, display: 'flex', justifyContent: 'center', gap: '16px', color: '#fff', fontWeight: 'bold', fontSize: '14px', textShadow: '0 1px 2px rgba(0,0,0,0.5)' }}>
+          <span style={{ opacity: 0.6 }}>Following</span>
+          <span>For You</span>
+        </div>
+
+        {/* AI Forensics Bottom Sheet */}
+        <motion.div
+          style={{ 
+            position: 'absolute', bottom: 0, left: 0, right: 0, 
+            background: '#111', borderRadius: '24px 24px 0 0', 
+            padding: '24px 20px', zIndex: 20, color: '#fff',
+            boxShadow: '0 -10px 40px rgba(0,0,0,0.8)',
+            borderTop: '1px solid rgba(255,255,255,0.1)'
+          }}
+          initial={{ y: '100%' }}
+          animate={isPaused ? { y: '0%' } : { y: ['100%', '100%', '0%', '0%'] }}
+          transition={{ duration: 8, times: [0, 0.48, 0.52, 1], ease: "easeInOut" }}
+        >
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
+            <h3 style={{ fontSize: '18px', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <ShieldCheck color="#25F4EE" size={20} /> Content Forensics
+            </h3>
+            <div style={{ background: 'rgba(255,255,255,0.1)', borderRadius: '50%', padding: '4px' }}>
+              <X size={16} />
+            </div>
+          </div>
+          
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            <div style={{ background: 'rgba(255,255,255,0.05)', padding: '16px', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.05)' }}>
+              <div style={{ fontSize: '12px', color: '#888', marginBottom: '4px' }}>ImageSignal Confidence</div>
+              <div style={{ display: 'flex', alignItems: 'end', gap: '8px' }}>
+                <span style={{ fontSize: '32px', fontWeight: 'bold', color: '#FE2C55', lineHeight: 1 }}>98.2%</span>
+                <span style={{ fontSize: '14px', color: '#FE2C55', paddingBottom: '4px' }}>Likely Synthetic</span>
+              </div>
+              <div style={{ marginTop: '12px', height: '4px', background: '#333', borderRadius: '2px', overflow: 'hidden' }}>
+                <div style={{ width: '98.2%', height: '100%', background: '#FE2C55' }} />
+              </div>
+            </div>
+          </div>
+        </motion.div>
+
+        {/* Touch Simulation Cursor */}
+        <motion.div
+          style={{
+            position: 'absolute', zIndex: 100, width: '40px', height: '40px',
+            pointerEvents: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center'
+          }}
+          animate={isPaused ? { opacity: 0 } : { 
+            opacity: [0, 0, 1, 1, 1, 0],
+            y: [500, 500, 300, 500, 500, 600],
+            x: [150, 150, 150, 150, 150, 150],
+            scale: [1, 1, 1, 0.8, 1, 1]
+          }}
+          transition={{ duration: 8, times: [0, 0.15, 0.25, 0.44, 0.46, 0.55], ease: "easeInOut" }}
+        >
+          <div style={{ width: '20px', height: '20px', background: 'rgba(255,255,255,0.5)', borderRadius: '50%', boxShadow: '0 0 10px rgba(255,255,255,0.5)' }} />
+          <motion.div
+            style={{ position: 'absolute', inset: 0, border: '2px solid rgba(255,255,255,0.8)', borderRadius: '50%' }}
+            animate={isPaused ? { opacity: 0 } : { scale: [0, 0, 2, 2], opacity: [0, 0.8, 0, 0] }}
+            transition={{ duration: 8, times: [0, 0.44, 0.48, 1] }}
+          />
+        </motion.div>
+      </div>
+    </div>
+  )
+}
+
+/* ── Browser Extension Mockup ──────────────────────────────────────── */
+function ExtensionMockup({ isPaused = false }) {
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '100%', height: '100%', gap: '64px', flexWrap: 'wrap-reverse' }}>
+      
+      {/* Browser Frame */}
+      <div style={{ 
+        width: '400px', height: '500px', background: 'var(--panel-bg)', borderRadius: '12px', 
+        border: '1px solid var(--border)', position: 'relative', overflow: 'hidden',
+        boxShadow: '0 25px 50px -12px rgba(0,0,0,0.5)', flexShrink: 0
+      }}>
+        {/* Browser Top Bar */}
+        <div style={{ height: '40px', background: 'rgba(255,255,255,0.03)', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', padding: '0 16px', gap: '8px' }}>
+          <div style={{ width: 10, height: 10, borderRadius: '50%', background: '#FE2C55' }} />
+          <div style={{ width: 10, height: 10, borderRadius: '50%', background: '#F5A623' }} />
+          <div style={{ width: 10, height: 10, borderRadius: '50%', background: '#25F4EE' }} />
+          <div style={{ flex: 1, height: '24px', background: 'rgba(255,255,255,0.05)', borderRadius: '4px', marginLeft: '16px' }} />
+          <Scan size={16} color="var(--brand-cyan)" style={{ marginLeft: '8px' }} />
+        </div>
+
+        {/* Webpage Content */}
+        <div style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+           <div style={{ width: '40%', height: '24px', background: 'rgba(255,255,255,0.1)', borderRadius: '4px' }} />
+           <div style={{ width: '100%', height: '12px', background: 'rgba(255,255,255,0.05)', borderRadius: '4px' }} />
+           <div style={{ width: '80%', height: '12px', background: 'rgba(255,255,255,0.05)', borderRadius: '4px' }} />
+           <div style={{ width: '100%', height: '200px', background: 'url(/demo.jpg) center/cover', borderRadius: '8px', marginTop: '16px' }} />
+        </div>
+
+        {/* Extension Popup */}
+        <motion.div
+          style={{ 
+             position: 'absolute', top: '50px', right: '16px', width: '260px', 
+             background: 'rgba(20,20,20,0.95)', backdropFilter: 'blur(20px)', borderRadius: '12px', 
+             border: '1px solid rgba(37, 244, 238, 0.3)', padding: '16px', zIndex: 10,
+             boxShadow: '0 20px 40px rgba(0,0,0,0.5)', willChange: 'transform, opacity'
+          }}
+          initial={{ opacity: 0, y: -20, scale: 0.95 }}
+          animate={isPaused ? { opacity: 1, y: 0, scale: 1 } : { opacity: [0, 0, 1, 1], y: [-20, -20, 0, 0], scale: [0.95, 0.95, 1, 1] }}
+          transition={{ duration: 8, times: [0, 0.2, 0.3, 1], ease: "easeOut" }}
+        >
+           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px', borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: '12px' }}>
+              <Scan size={18} color="var(--brand-cyan)" />
+              <strong style={{ fontSize: '14px' }}>ImageSignal Scanner</strong>
+           </div>
+           <motion.div 
+             initial={{ opacity: 0, height: 0 }}
+             animate={isPaused ? { opacity: 1, height: 'auto' } : { opacity: [0, 0, 1, 1], height: [0, 0, 'auto', 'auto'] }}
+             transition={{ duration: 8, times: [0, 0.4, 0.45, 1] }}
+             style={{ background: 'rgba(254, 44, 85, 0.1)', padding: '12px', borderRadius: '8px', border: '1px solid rgba(254, 44, 85, 0.2)' }}
+           >
+              <div style={{ fontSize: '11px', color: '#888', marginBottom: '4px' }}>Confidence Score</div>
+              <div style={{ display: 'flex', alignItems: 'end', gap: '8px' }}>
+                <span style={{ fontSize: '24px', fontWeight: 'bold', color: '#FE2C55', lineHeight: 1 }}>98.2%</span>
+              </div>
+           </motion.div>
+        </motion.div>
+        
+        {/* Fake Cursor Scanning */}
+        <motion.div
+          style={{ position: 'absolute', zIndex: 100, width: '24px', height: '24px' }}
+          animate={isPaused ? { opacity: 0 } : { x: ['300px', '300px', '200px', '200px'], y: ['400px', '400px', '250px', '250px'] }}
+          transition={{ duration: 8, times: [0, 0.1, 0.2, 1] }}
+        >
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="1.5"><path d="m3 3 7.07 16.97 2.51-7.39 7.39-2.51L3 3z" fill="black" /></svg>
+        </motion.div>
+      </div>
+
+      {!isPaused && (
+        <div style={{ flex: '1 1 300px', maxWidth: '400px' }}>
+          <h2 style={{ fontSize: '32px', marginBottom: '24px', background: 'linear-gradient(90deg, #F5A623, var(--text-main))', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
+            Browser Extension
+          </h2>
+          <p style={{ color: 'var(--text-dim)', fontSize: '16px', lineHeight: '1.6', marginBottom: '24px' }}>
+            Arm your moderation team and fact-checkers with instant insights. Our Chrome Extension scans images natively on any webpage with a single right-click.
+          </p>
+          <ul style={{ display: 'flex', flexDirection: 'column', gap: '16px', color: 'var(--text-main)' }}>
+            <li style={{ display: 'flex', gap: '16px', alignItems: 'center', background: 'rgba(255,255,255,0.02)', padding: '12px 16px', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.05)' }}>
+              <Scan color="var(--brand-cyan)" size={20} />
+              <span style={{ fontSize: '14px', fontWeight: '500' }}>Context Menu Integration</span>
+            </li>
+            <li style={{ display: 'flex', gap: '16px', alignItems: 'center', background: 'rgba(255,255,255,0.02)', padding: '12px 16px', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.05)' }}>
+              <Activity color="#FE2C55" size={20} />
+              <span style={{ fontSize: '14px', fontWeight: '500' }}>On-the-fly Analysis</span>
+            </li>
+          </ul>
+        </div>
+      )}
+
+    </div>
+  )
+}
+
+
+/* ── Automated Mockup Carousel ──────────────────────────────────────────── */
+function MockupCarousel() {
+  const [activeIndex, setActiveIndex] = useState(0);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setActiveIndex(prev => (prev + 1) % 3);
+    }, 8000); // 8 seconds per slide
+    return () => clearInterval(interval);
+  }, []);
+
+  return (
+    <div style={{ width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '24px 24px', background: 'transparent' }}>
+      
+      {/* Carousel Tab Selectors */}
+      <div style={{ display: 'flex', gap: '12px', marginBottom: '40px', background: 'rgba(255,255,255,0.03)', padding: '8px', borderRadius: '100px', border: '1px solid rgba(255,255,255,0.05)', flexWrap: 'wrap', justifyContent: 'center' }}>
+        <button 
+          onClick={() => setActiveIndex(0)} 
+          style={{ padding: '8px 20px', borderRadius: '100px', fontSize: '14px', fontWeight: '500', background: activeIndex === 0 ? 'var(--brand-cyan)' : 'transparent', color: activeIndex === 0 ? '#000' : 'var(--text-dim)', transition: 'all 0.2s' }}
+        >
+          Desktop Web App
+        </button>
+        <button 
+          onClick={() => setActiveIndex(1)} 
+          style={{ padding: '8px 20px', borderRadius: '100px', fontSize: '14px', fontWeight: '500', background: activeIndex === 1 ? 'var(--brand-cyan)' : 'transparent', color: activeIndex === 1 ? '#000' : 'var(--text-dim)', transition: 'all 0.2s' }}
+        >
+          Platform Integration
+        </button>
+        <button 
+          onClick={() => setActiveIndex(2)} 
+          style={{ padding: '8px 20px', borderRadius: '100px', fontSize: '14px', fontWeight: '500', background: activeIndex === 2 ? 'var(--brand-cyan)' : 'transparent', color: activeIndex === 2 ? '#000' : 'var(--text-dim)', transition: 'all 0.2s' }}
+        >
+          Browser Extension
+        </button>
+      </div>
+
+      {/* Carousel Viewport */}
+      <div style={{ width: '100%', maxWidth: '1000px', minHeight: '500px', position: 'relative', display: 'flex', justifyContent: 'center' }}>
+        <AnimatePresence mode="wait">
+          {activeIndex === 0 && (
+            <motion.div key="0" initial={{ opacity: 0, x: -50 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 50 }} transition={{ duration: 0.5 }} style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center' }}>
+               <HeroDemo />
+            </motion.div>
+          )}
+          {activeIndex === 1 && (
+            <motion.div key="1" initial={{ opacity: 0, x: -50 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 50 }} transition={{ duration: 0.5 }} style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center' }}>
+               <TikTokAnimatedMockup />
+            </motion.div>
+          )}
+          {activeIndex === 2 && (
+            <motion.div key="2" initial={{ opacity: 0, x: -50 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 50 }} transition={{ duration: 0.5 }} style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center' }}>
+               <ExtensionMockup />
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+      
+      {/* Progress Bar */}
+      <div style={{ width: '100px', height: '4px', background: 'rgba(255,255,255,0.1)', borderRadius: '2px', marginTop: '24px', overflow: 'hidden' }}>
+         <motion.div 
+           key={activeIndex}
+           initial={{ width: '0%' }}
+           animate={{ width: '100%' }}
+           transition={{ duration: 8, ease: "linear" }}
+           style={{ height: '100%', background: 'var(--brand-cyan)' }}
+         />
+      </div>
+
+    </div>
+  )
+}
 
 
 /* ── Project Brief View ──────────────────────────────────────────── */
@@ -964,7 +1275,7 @@ function LearnView() {
 
 
 /* ── Interactive Hero Demo ──────────────────────────────────── */
-function HeroDemo() {
+function HeroDemo({ isPaused = false }) {
   return (
     <div className="hero-demo-container" style={{ perspective: '1000px', width: '100%', maxWidth: '800px', margin: '40px auto', height: '400px', position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
       
@@ -1321,36 +1632,36 @@ export default function App() {
             <motion.div
               key="home"
               className="home-view"
-              initial={{ opacity: 0, scale: 0.98, filter: 'blur(5px)' }}
-              animate={{ opacity: 1, scale: 1, filter: 'blur(0px)' }}
-              exit={{ opacity: 0, scale: 0.98, filter: 'blur(5px)' }}
-              transition={{ duration: 0.4, ease: 'easeInOut' }}
-              style={{ flex: 1, display: 'flex', flexDirection: 'column' }}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.2 }}
+              style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}
             >
-              <div className="hero-section" style={{ position: 'relative', width: '100%', minHeight: '40vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
-                <h1 className="hero-title" style={{ position: 'relative', zIndex: 20 }}>Detect AI-Generated Images with <span>Confidence</span></h1>
-                <p className="hero-subtitle" style={{ position: 'relative', zIndex: 20 }}>
-                  Instantly analyze images to determine if they were synthetically generated or human-made, 
-                  using state-of-the-art model checkpointing and compression forensics.
-                </p>
-                <div className="hero-actions" style={{ position: 'relative', zIndex: 20 }}>
-                  <button 
-                    className="btn-large" 
-                    onClick={() => setView('transition')}
-                  >
-                    Start Analysis
-                  </button>
-                  <button 
-                    className="btn-secondary"
-                    onClick={() => setView('brief')}
-                  >
-                    Read the Brief
-                  </button>
+              <div style={{ flex: 1, display: 'flex', flexDirection: 'column', background: 'rgba(0,0,0,0.2)', borderTop: '1px solid rgba(255,255,255,0.05)' }}>
+                <div 
+                  style={{ 
+                    display: 'flex', flexDirection: 'column', 
+                    alignItems: 'center', justifyContent: 'center', textAlign: 'center',
+                    padding: '64px 24px 32px 24px', background: 'radial-gradient(circle at center, rgba(37, 244, 238, 0.05) 0%, transparent 70%)'
+                  }}
+                >
+                  <h1 className="hero-title" style={{ fontSize: '42px', lineHeight: '1.1', maxWidth: '900px', margin: '0 auto', marginBottom: '16px' }}>
+                    Detect AI-Generated Images with <span>Confidence</span>
+                  </h1>
+                  <p className="hero-subtitle" style={{ fontSize: '16px', maxWidth: '600px', margin: '0 auto', marginBottom: '24px', color: 'var(--text-dim)' }}>
+                    Instantly analyze images to determine if they were synthetically generated or human-made, 
+                    using state-of-the-art model checkpointing and compression forensics.
+                  </p>
+                  <div className="hero-actions" style={{ display: 'flex', gap: '16px', justifyContent: 'center' }}>
+                    <button className="btn-large" onClick={() => setView('transition')}>Start Analysis</button>
+                    <button className="btn-secondary" onClick={() => setView('brief')}>Read the Brief</button>
+                  </div>
                 </div>
-              </div>
 
-              <div className="video-section" style={{ overflow: 'hidden' }}>
-                <HeroDemo />
+                <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', paddingBottom: '48px' }}>
+                  <MockupCarousel />
+                </div>
               </div>
             </motion.div>
           )}
