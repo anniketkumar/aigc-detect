@@ -42,6 +42,7 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
       // so it's what the extension should call by default.
       formData.append('checkpoint', 'baseline');
       formData.append('quality', '95');
+      formData.append('fast_mode', 'true');
 
       const apiResponse = await fetch('http://localhost:8000/api/analyze', {
         method: 'POST',
