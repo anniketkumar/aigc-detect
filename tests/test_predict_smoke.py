@@ -198,11 +198,32 @@ def test_predict_function_matches_cli(fixture_dir, fake_ckpt, tmp_path):
 
 
 def test_batching_does_not_change_results(fixture_dir, fake_ckpt, tmp_path):
+    """Batch size must not change which image gets which path/flag, and must
+    not move a prediction beyond float32 rounding noise.
+
+    Not exact ``==`` on the floats: a (1, N) matmul and a (64, N) batched
+    matmul inside the real LinearHead can legitimately pick different
+    internal BLAS code paths, and float addition is not associative, so a
+    difference at the last bit or two (~1e-7, float32 machine epsilon) is
+    expected and environment-dependent -- it showed up on Colab's Linux BLAS
+    and not on a Windows/CPU run, which is exactly the kind of thing an
+    exact-equality assertion should never have depended on. 1e-4 is well
+    above that noise floor and would still catch a real batching bug (wrong
+    slot, stale state carried across batches, etc.), which would not produce
+    a difference this small.
+    """
     out_1 = tmp_path / "bs1.json"
     out_big = tmp_path / "bsbig.json"
     r1 = P.predict(fixture_dir, out_1, ckpt=fake_ckpt, device="cpu", batch_size=1, quiet=True)
     r2 = P.predict(fixture_dir, out_big, ckpt=fake_ckpt, device="cpu", batch_size=64, quiet=True)
-    assert r1 == r2
+    assert len(r1) == len(r2)
+    for a, b in zip(r1, r2):
+        assert a["image_path"] == b["image_path"]
+        assert a["domain_flag"] == b["domain_flag"]
+        if a["pred"] is None or b["pred"] is None:
+            assert a["pred"] == b["pred"]
+        else:
+            assert a["pred"] == pytest.approx(b["pred"], abs=1e-4)
 
 
 def test_empty_directory_raises_a_clear_error(tmp_path, fake_ckpt):
