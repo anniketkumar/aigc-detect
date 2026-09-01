@@ -323,3 +323,32 @@ still traces to a source file for error analysis.
 - The per-generator spread not closing is itself worth carrying into the
   error-analysis writeup (§11): FLUX.1-dev and Gemini are still the floor,
   same as Phase 3, just with a different one of the two in last place.
+
+---
+
+## Q&A prep — dataset licensing, per source (`src/data/sources.py`)
+
+Checked directly against each HF dataset card (2026-09-01), because the
+rules say "public or properly licensed" and going off the organizers'
+named list (SID_Set / CIFAKE / WildFake) onto community mirrors is a fair
+question to be asked live. Recorded here so the answer is "we checked, here
+is what we found," not an improvisation.
+
+| Source | Repo | License found | Note |
+|---|---|---|---|
+| OpenImagesV7 (real), FLUX.1-dev (AI) | `saberzl/SID_Set` | **CC-BY-4.0**, stated | One of the organizers' three named datasets. Cleanest of the nine. Inherits COCO/OpenImages/Flickr30k CC-BY-4.0 obligations (attribution, share-alike on derived portions) — we attribute here and in README. |
+| Gemini-nano-banana (AI) | `bitmind/nano-banana` | **MIT** on the HF wrapper | Images are Gemini-2.5-Flash-Image-Preview output. The MIT tag covers BitMind's packaging, not necessarily Google's own terms on API-generated imagery — we have not separately confirmed Google's ToS permit this redistribution. **Weakest link if pressed.** |
+| Megalith-Flickr (real) | `bitmind/megalith-small` | **MIT** on the HF wrapper | Curated as "permissively-licensed Flickr" per the source's own description; we did not re-verify per-photo Flickr licenses beneath the wrapper. |
+| Aura (AI) | `bitmind/bm-aura-imagegen` | **none declared** | No LICENSE file, no card. Generated content from an open-source-adjacent model family; risk is "unlicensed mirror," not "restricted content." |
+| SDXL (AI) | `bitmind/bm-subnet-stable-diffusion-xl-base-1.0` | **none declared** | Same as above. Underlying model (SDXL base 1.0) is CreativeML Open RAIL++-M — permits this kind of research use. |
+| Mobius, RealVisXL-V4.0 (AI) | `bitmind/bm-subnet-*` | not individually re-checked | Same BitMind org/pattern as SDXL and Aura above (no card, no declared license); underlying models are each openly released with permissive-for-research terms. |
+| Unsplash (real) | `wtcherr/unsplash_5k` | **none declared on the HF card** | Underlying content is Unsplash, whose own license (free for commercial/non-commercial use, no attribution required) is well-established independent of the wrapper's missing tag. Lowest risk of the "undeclared" group. |
+| **MidJourney (AI)** | `bitmind/JourneyDB` | **none declared on the mirror; the *original* JourneyDB dataset it mirrors is gated behind a custom, non-standard Terms of Usage** (not CC/MIT/Apache) | **The one to have a real answer for.** We used a community re-upload of a dataset whose upstream terms we have not read in full, held fully out of training (eval-only, per PLAN.md §4.3.1) same as the other two held-out generators. If asked: we'd say this generator's role is eval-only cross-generator generalization, not training data, and we'd swap it for a cleaner closed-source holdout (e.g. a small self-collected or clearly-licensed set) given more runway. |
+
+**The honest summary, if asked live:** the three organizer-named datasets
+(SID_Set here) are unambiguous. The rest are public HF mirrors chosen for
+generator diversity per `sources.py`'s docstring reasoning, several of
+which don't carry their own license tag — that's a real gap in provenance
+rigor next to how rigorous the *leak* audit is, and JourneyDB is the one
+with an actual upstream restriction behind the missing tag rather than just
+a missing tag. We'd rather say that plainly than get caught improvising.

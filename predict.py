@@ -6,7 +6,7 @@ Recurses ``--image_dir`` for jpg/jpeg/png/webp/bmp files (case-insensitive)
 and scores each with the frozen-CLIP linear probe
 (``src/models/clip_baseline.py``), writing one JSON array:
 
-    [{"image_path": "path/to/images/a.jpg", "pred": 0.873}, ...]
+    [{"image_path": "path/to/images/a.jpg", "pred": 0.873, "domain_flag": null}, ...]
 
 Every image goes through the same hardened decode path the eval harness and
 the manifest builder use (``src/data/imageio.py``): PNGs with alpha, grayscale
@@ -15,6 +15,15 @@ and a recoverably-truncated file is still scored (with a warning). Only a
 *genuine* decode failure gets ``"pred": null`` -- this must never crash on a
 directory the model has never seen, no matter what garbage is in it (§9.1:
 "the most common way a good project scores badly").
+
+``domain_flag`` is ``"non_photographic"`` when ``src/data/domain_guard.py``'s
+cheap pixel-statistics heuristic thinks the image is a rendered graphic
+(screenshot, diagram, infographic) rather than a camera photo, else ``null``.
+Every training source, real and AI, is photographic (``src/data/sources.py``),
+so the model has no basis for scoring this content type and ``pred`` there is
+not meaningful -- the flag exists so a caller can say so instead of presenting
+a confident label. It's advisory: ``pred`` is still the model's real output
+either way, flagged or not.
 
 Deterministic: the file list is sorted, so the same ``--image_dir`` produces
 byte-identical output on every run, on every OS, regardless of the
@@ -31,6 +40,7 @@ from pathlib import Path
 from PIL import Image
 
 from src.data import imageio as IIO
+from src.data.domain_guard import check_domain
 from src.models.base import load_model
 
 __all__ = ["IMAGE_EXTENSIONS", "find_images", "load_for_scoring", "predict", "main"]
@@ -96,6 +106,7 @@ def predict(
     batch_imgs: list = []
     batch_ids: list[str] = []
     batch_slots: list[int] = []
+    batch_flags: list[str | None] = []
 
     def flush() -> None:
         if not batch_imgs:
@@ -106,14 +117,16 @@ def predict(
                 f"{model.name}.score returned {len(scores)} scores for "
                 f"{len(batch_imgs)} images"
             )
-        for slot, image_path, score in zip(batch_slots, batch_ids, scores):
+        for slot, image_path, score, flag in zip(batch_slots, batch_ids, scores, batch_flags):
             results[slot] = {
                 "image_path": image_path,
                 "pred": None if score is None else float(score),
+                "domain_flag": flag,
             }
         batch_imgs.clear()
         batch_ids.clear()
         batch_slots.clear()
+        batch_flags.clear()
 
     for i, path in enumerate(paths):
         image_path = path.as_posix()
@@ -121,11 +134,16 @@ def predict(
         if warning:
             print(f"[warn] {warning}", file=sys.stderr)
         if img is None:
-            results[i] = {"image_path": image_path, "pred": None}
+            results[i] = {"image_path": image_path, "pred": None, "domain_flag": None}
             continue
+        # Cheap heuristic on the canonically-decoded image, same convention
+        # a Scorer uses -- see src/data/domain_guard.py for what this can
+        # and can't tell us.
+        flag = "non_photographic" if check_domain(img).likely_non_photographic else None
         batch_imgs.append(img)
         batch_ids.append(image_path)
         batch_slots.append(i)
+        batch_flags.append(flag)
         if len(batch_imgs) >= batch_size:
             flush()
     flush()

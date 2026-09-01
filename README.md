@@ -35,6 +35,29 @@ architecture at this budget (PLAN.md §13's effort ranking). What shipped:
 
 ## Headline results
 
+**Organizers' scoring formula.** `Final Score = 0.50 × AUC_clean + 0.50 ×
+AUC_robust` (AUC_robust = family-balanced mean transformed AUROC over the
+19-cell grid, matching the "robustness_gap" headline in
+`results/baseline/report.md` §3.2):
+
+| Checkpoint | AUC_clean | AUC_robust | Final Score |
+|---|---:|---:|---:|
+| `runs/baseline.pt` | 0.9810 | 0.9710 | **0.9760** |
+| `runs/aug.pt` | 0.9779 | 0.9702 | 0.9741 |
+
+**Baseline scores 0.0019 higher than aug on the organizers' own formula.**
+Augmentation trades clean AUROC away (0.9810 → 0.9779) for a robustness-gap
+improvement (0.0099 → 0.0077) too small to cover that trade once both terms
+are weighted equally — we're not hiding this because it's inconvenient for
+the augmentation story below. **We would submit `runs/baseline.pt`** — it is
+already `predict.py`'s default checkpoint — **not `runs/aug.pt`, if this
+formula is what's being scored.** The finer-grained case for augmentation
+(TPR@FPR=5% gap, paired bootstrap, headline #3 below) is real but doesn't
+survive being collapsed into a single clean/robust average at this sample
+size; both views are reported so the metric choice is visible rather than
+picked for us. Numbers: `results/baseline/report.md`,
+`results/aug/report.md`.
+
 **1. The standard corpus separates perfectly without looking at a pixel.**
 SID_Set's real images are 100% JPEG, its AI images 100% PNG — a one-line rule
 (`if container == PNG: predict AI`) scores 100.00% accuracy on real-vs-fake
@@ -161,3 +184,23 @@ python -m scripts.error_analysis   # results/error_analysis/
   (nano-banana) and FLUX.1-dev are held fully out of training, but "unseen
   generator" here means these three specifically, not a guarantee about
   generators not represented in the eval at all.
+- **Non-photographic input (diagrams, screenshots, infographics) is out of
+  domain for both classes, not just one.** Every source in
+  `src/data/sources.py` — all three real sets and all seven generators — is
+  photographic; nothing rendered (flat-filled vector art, UI chrome, dense
+  text) appears as real *or* fake in training. The model reliably scores this
+  content "AI-generated," consistent with `results/error_analysis/note.md`'s
+  finding that its signal tracks "does this look like a certain kind of
+  photo" rather than generation artifacts directly — a rendered diagram is
+  the extreme case of everything that already pushes a real photo toward
+  that class. `predict.py`/`app.py` now flag this (`domain_flag:
+  "non_photographic"`, `src/data/domain_guard.py`) via a cheap, untrained
+  pixel-statistic heuristic (unique-color ratio, dominant-color fraction) so
+  a caller can present the score as unreliable rather than confident — the
+  flag doesn't change or suppress `pred` itself, since there's no training
+  signal that would make a "corrected" number meaningful either.
+- **No number on the organizers' reference validation subset.** We hashed
+  COCO val2017 (5,000 images) for the exclusion blocklist, but the DALL-E
+  Advanced half has no standalone distribution and ships only inside
+  WildFake's ~700GB ModelScope archives, so we could not report a number on
+  it within bandwidth constraints.

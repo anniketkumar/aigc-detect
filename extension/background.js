@@ -36,7 +36,11 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
       // Send to local API
       const formData = new FormData();
       formData.append('image', blob, 'image.jpg');
-      formData.append('checkpoint', 'aug');
+      // 'baseline' outscores 'aug' on the organizers' Final Score formula
+      // (0.5*AUC_clean + 0.5*AUC_robust) -- see README.md "Headline results"
+      // and app.py's DEFAULT_CHECKPOINT. That's the checkpoint we'd submit,
+      // so it's what the extension should call by default.
+      formData.append('checkpoint', 'baseline');
       formData.append('quality', '95');
 
       const apiResponse = await fetch('http://localhost:8000/api/analyze', {

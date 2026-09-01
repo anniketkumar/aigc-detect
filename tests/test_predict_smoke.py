@@ -146,9 +146,10 @@ def test_smoke_scores_every_supported_image_without_crashing(fixture_dir, fake_c
 
     assert len(results) == 10
     for row in results:
-        assert set(row) == {"image_path", "pred"}
+        assert set(row) == {"image_path", "pred", "domain_flag"}
         assert isinstance(row["image_path"], str)
         assert row["pred"] is None or (isinstance(row["pred"], float) and 0.0 <= row["pred"] <= 1.0)
+        assert row["domain_flag"] in (None, "non_photographic")
 
 
 def test_readable_awkward_inputs_get_a_real_prediction(fixture_dir, fake_ckpt, tmp_path):
@@ -222,7 +223,45 @@ def test_output_is_a_plain_json_array_matching_the_spec_shape(fixture_dir, fake_
     _run(fixture_dir, out, fake_ckpt)
     raw = json.loads(out.read_text(encoding="utf-8"))
     assert isinstance(raw, list)
-    assert all(isinstance(r, dict) and "image_path" in r and "pred" in r for r in raw)
+    assert all(
+        isinstance(r, dict) and "image_path" in r and "pred" in r and "domain_flag" in r
+        for r in raw
+    )
+
+
+def test_unreadable_file_gets_a_null_domain_flag_too(fixture_dir, fake_ckpt, tmp_path):
+    out = tmp_path / "preds.json"
+    results = _run(fixture_dir, out, fake_ckpt)
+    by_name = {Path(r["image_path"]).name: r for r in results}
+    assert by_name["not_an_image.jpg"]["domain_flag"] is None
+
+
+def test_flat_graphic_image_is_flagged_non_photographic(fake_ckpt, tmp_path):
+    """A rendered-graphic stand-in (a handful of flat color blocks, no
+    photographic noise) should trip the domain guard; the 3 random-noise
+    fixtures from ``fixture_dir`` (real camera-photo stand-ins) should not."""
+    d = tmp_path / "images"
+    d.mkdir()
+
+    graphic = Image.new("RGB", (256, 256), (255, 255, 255))
+    for i, color in enumerate([(20, 90, 200), (200, 40, 40), (30, 160, 60)]):
+        box = (10, 10 + i * 70, 200, 70 + i * 70)
+        Image.new("RGB", (box[2] - box[0], box[3] - box[1]), color).convert("RGB")
+        for y in range(box[1], box[3]):
+            for x in range(box[0], box[2]):
+                graphic.putpixel((x, y), color)
+    graphic.save(d / "diagram.png")
+
+    rng = np.random.default_rng(0)
+    photo = Image.fromarray(rng.integers(0, 255, size=(256, 256, 3), dtype=np.uint8), "RGB")
+    photo.save(d / "noise_photo.jpg", quality=95)
+
+    out = tmp_path / "preds.json"
+    results = _run(d, out, fake_ckpt)
+    by_name = {Path(r["image_path"]).name: r for r in results}
+
+    assert by_name["diagram.png"]["domain_flag"] == "non_photographic"
+    assert by_name["noise_photo.jpg"]["domain_flag"] is None
 
 
 # --------------------------------------------------------------------------- #
