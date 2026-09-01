@@ -312,13 +312,126 @@ function Header({ theme, onToggleTheme, currentView, setView }) {
           </div>
         </div>
       </div>
-      <button className="theme-btn" onClick={onToggleTheme} title="Toggle Dark Mode">
-        {theme === 'dark' ? 'Light Mode' : 'Dark Mode'}
-      </button>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+        <button className="theme-btn" onClick={onToggleTheme} title="Toggle Dark Mode">
+          {theme === 'dark' ? 'Light Mode' : 'Dark Mode'}
+        </button>
+        <a href="https://github.com/anniketkumar/aigc-detect" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--text-dim)', display: 'flex', alignItems: 'center' }} title="View Source">
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-github"><path d="M15 22v-4a4.8 4.8 0 0 0-1-3.5c3 0 6-2 6-5.5.08-1.25-.27-2.48-1-3.5.28-1.15.28-2.35 0-3.5 0 0-1 0-3 1.5-2.64-.5-5.36-.5-8 0C6 2 5 2 5 2c-.3 1.15-.3 2.35 0 3.5A5.403 5.403 0 0 0 4 9c0 3.5 3 5.5 6 5.5-.39.49-.68 1.05-.85 1.65-.17.6-.22 1.23-.15 1.85v4"/><path d="M9 18c-4.51 2-5-2-7-2"/></svg>
+        </a>
+      </div>
     </div>
   )
 }
 
+
+
+/* ── Project Brief View ──────────────────────────────────────────── */
+function ProjectBrief() {
+  return (
+    <div style={{ maxWidth: '1000px', margin: '0 auto', padding: '48px 24px', display: 'flex', flexDirection: 'column', gap: '64px' }}>
+      
+      {/* Header */}
+      <div style={{ textAlign: 'center' }}>
+        <h1 style={{ fontSize: '36px', marginBottom: '16px' }}>Project Architecture & Findings</h1>
+        <p style={{ color: 'var(--text-dim)', fontSize: '18px', maxWidth: '600px', margin: '0 auto' }}>
+          How ImageSignal achieves state-of-the-art synthetic image detection using CLIP, normalization pipelines, and compression forensics.
+        </p>
+      </div>
+
+      {/* Infographic: The Normalization Pipeline */}
+      <section>
+        <h2 style={{ fontSize: '24px', marginBottom: '24px', display: 'flex', alignItems: 'center', gap: '8px' }}><ShieldCheck color="var(--brand-cyan)" /> Closing the Leak Channels</h2>
+        <div className="card" style={{ padding: '32px', background: 'rgba(255,255,255,0.02)' }}>
+          <p style={{ color: 'var(--text-dim)', marginBottom: '32px' }}>
+            Traditional models cheat by learning metadata or container artifacts (e.g. AI images are PNGs, real are JPEGs). Our pipeline forces a strict canonical decode to close 12 of 13 known leak channels before the model ever sees the pixels.
+          </p>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '16px', justifyContent: 'space-between', flexWrap: 'wrap' }}>
+            <div style={{ flex: 1, padding: '20px', background: 'var(--panel-bg)', borderRadius: 'var(--radius-md)', border: '1px solid var(--border)', textAlign: 'center' }}>
+              <div style={{ color: '#FE2C55', fontWeight: 'bold', marginBottom: '8px' }}>Raw Input</div>
+              <div style={{ fontSize: '12px', color: 'var(--text-dim)' }}>Metadata, PNG/JPEG, ICC Profiles, Odd Geometry</div>
+            </div>
+            <div style={{ color: 'var(--brand-cyan)' }}>&rarr;</div>
+            <div style={{ flex: 1, padding: '20px', background: 'rgba(37, 244, 238, 0.05)', borderRadius: 'var(--radius-md)', border: '1px solid rgba(37, 244, 238, 0.2)', textAlign: 'center' }}>
+              <div style={{ color: 'var(--brand-cyan)', fontWeight: 'bold', marginBottom: '8px' }}>Canonical Decode</div>
+              <div style={{ fontSize: '12px', color: 'var(--text-dim)' }}>Strip Metadata, Crop Natively, Match JPEG Quality</div>
+            </div>
+            <div style={{ color: 'var(--brand-cyan)' }}>&rarr;</div>
+            <div style={{ flex: 1, padding: '20px', background: 'var(--panel-bg)', borderRadius: 'var(--radius-md)', border: '1px solid var(--border)', textAlign: 'center' }}>
+              <div style={{ color: 'var(--text-main)', fontWeight: 'bold', marginBottom: '8px' }}>Frozen CLIP Backbone</div>
+              <div style={{ fontSize: '12px', color: 'var(--text-dim)' }}>Scores pure visual semantic artifacts</div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Chart: TPR Spread */}
+      <section>
+        <h2 style={{ fontSize: '24px', marginBottom: '24px', display: 'flex', alignItems: 'center', gap: '8px' }}><Activity color="var(--orange)" /> The Operating-Point Spread</h2>
+        <div className="card" style={{ padding: '32px', background: 'rgba(255,255,255,0.02)' }}>
+          <p style={{ color: 'var(--text-dim)', marginBottom: '32px' }}>
+            Aggregate AUROC hides a massive spread across generators. At a 1% false-positive budget (crucial for moderation triage), the True Positive Rate (TPR) varies wildly. FLUX.1-dev remains the hardest to detect.
+          </p>
+          
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            <div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', fontSize: '14px' }}>
+                <span>MidJourney</span>
+                <span style={{ color: 'var(--brand-cyan)', fontWeight: 'bold' }}>88.6% TPR</span>
+              </div>
+              <div style={{ width: '100%', height: '12px', background: 'var(--panel-bg)', borderRadius: '6px', overflow: 'hidden' }}>
+                <motion.div initial={{ width: 0 }} animate={{ width: '88.6%' }} transition={{ duration: 1, delay: 0.2, ease: "easeOut" }} style={{ height: '100%', background: 'var(--brand-cyan)' }} />
+              </div>
+            </div>
+            
+            <div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', fontSize: '14px' }}>
+                <span>Average Generator</span>
+                <span style={{ color: '#F5A623', fontWeight: 'bold' }}>~75.0% TPR</span>
+              </div>
+              <div style={{ width: '100%', height: '12px', background: 'var(--panel-bg)', borderRadius: '6px', overflow: 'hidden' }}>
+                <motion.div initial={{ width: 0 }} animate={{ width: '75%' }} transition={{ duration: 1, delay: 0.4, ease: "easeOut" }} style={{ height: '100%', background: '#F5A623' }} />
+              </div>
+            </div>
+
+            <div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', fontSize: '14px' }}>
+                <span>FLUX.1-dev</span>
+                <span style={{ color: '#FE2C55', fontWeight: 'bold' }}>53.7% TPR</span>
+              </div>
+              <div style={{ width: '100%', height: '12px', background: 'var(--panel-bg)', borderRadius: '6px', overflow: 'hidden' }}>
+                <motion.div initial={{ width: 0 }} animate={{ width: '53.7%' }} transition={{ duration: 1, delay: 0.6, ease: "easeOut" }} style={{ height: '100%', background: '#FE2C55' }} />
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Limitations Grid */}
+      <section>
+        <h2 style={{ fontSize: '24px', marginBottom: '24px', display: 'flex', alignItems: 'center', gap: '8px' }}><Info color="var(--text-main)" /> Known Limitations</h2>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '24px' }}>
+          
+          <div className="card" style={{ padding: '24px', background: 'rgba(255,255,255,0.02)', borderTop: '2px solid #FE2C55' }}>
+            <h3 style={{ fontSize: '18px', marginBottom: '12px' }}>Non-Photographic Domains</h3>
+            <p style={{ color: 'var(--text-dim)', fontSize: '14px', lineHeight: '1.6' }}>
+              Training data is 100% camera photos. The model reliably scores rendered diagrams, UI chrome, and infographics as "AI-generated" because they lack camera noise. We use a <code>domain_guard</code> heuristic to warn users when flat graphics are uploaded.
+            </p>
+          </div>
+
+          <div className="card" style={{ padding: '24px', background: 'rgba(255,255,255,0.02)', borderTop: '2px solid #F5A623' }}>
+            <h3 style={{ fontSize: '18px', marginBottom: '12px' }}>Real Data Constraint</h3>
+            <p style={{ color: 'var(--text-dim)', fontSize: '14px', lineHeight: '1.6' }}>
+              810 real test images is the binding constraint for measuring significance, not the model. The TPR@5% gap improvement from augmentation is not statistically significant because the paired bootstrap CIs are wide at this N.
+            </p>
+          </div>
+
+        </div>
+      </section>
+
+    </div>
+  )
+}
 
 /* ── API Docs View ──────────────────────────────────────────── */
 
@@ -350,7 +463,7 @@ function ApiDocs() {
               <tr>
                 <td><code>checkpoint</code></td>
                 <td>String</td>
-                <td>Model checkpoint to use. Options: <code>aug</code> (default), <code>baseline</code>.</td>
+                <td>Model checkpoint to use. Options: <code>baseline</code> (default — scores higher on the organizers' Final Score formula), <code>aug</code>.</td>
               </tr>
               <tr>
                 <td><code>quality</code></td>
@@ -368,12 +481,13 @@ function ApiDocs() {
           <h3>Response</h3>
           <pre className="code-block">
 {`{
-  "checkpoint": "aug",
+  "checkpoint": "baseline",
   "quality": 95,
-  "clean_score": 0.054, 
-  "reencoded_score": 0.048, 
+  "clean_score": 0.054,
+  "reencoded_score": 0.048,
   "jpeg_kb": 124.5, // Only if fast_mode=false
   "warning": null,
+  "domain_warning": null, // Disclaimer text dynamically attached based on content constraints
   "clean_preview": "data:image/jpeg;base64,...", // Only if fast_mode=false
   "reencoded_preview": "data:image/jpeg;base64,...", // Only if fast_mode=false
   "ela_preview": "data:image/jpeg;base64,..." // Only if fast_mode=false
@@ -402,7 +516,7 @@ function ApiDocs() {
               <tr>
                 <td><code>checkpoint</code></td>
                 <td>String</td>
-                <td>Model checkpoint to use. Options: <code>aug</code> (default), <code>baseline</code>.</td>
+                <td>Model checkpoint to use. Options: <code>baseline</code> (default — scores higher on the organizers' Final Score formula), <code>aug</code>.</td>
               </tr>
             </tbody>
           </table>
@@ -414,12 +528,14 @@ function ApiDocs() {
     {
       "image_path": "DSC001.jpg",
       "pred": 0.054,
-      "warning": null
+      "warning": null,
+      "domain_warning": null
     },
     {
       "image_path": "screenshot.png",
       "pred": 0.982,
-      "warning": null
+      "warning": null,
+      "domain_warning": "Disclaimer: This tool provides probabilistic AI detection scores..."
     }
   ]
 }`}
@@ -526,7 +642,7 @@ function StressTestChart({ data }) {
 
 function BatchView() {
   const [files, setFiles] = useState([])
-  const [checkpoint, setCheckpoint] = useState('aug')
+  const [checkpoint, setCheckpoint] = useState('baseline')
   const [results, setResults] = useState(null)
   const [status, setStatus] = useState('idle')
   const [error, setError] = useState('')
@@ -673,6 +789,11 @@ function BatchView() {
                       {r.warning && (
                         <div style={{ position: 'absolute', top: 8, right: 8, background: 'rgba(0,0,0,0.7)', padding: '4px', borderRadius: '4px' }} title={r.warning}>
                           <AlertTriangle size={14} color="var(--orange)" />
+                        </div>
+                      )}
+                      {r.domain_warning && (
+                        <div style={{ position: 'absolute', top: 8, left: 8, background: 'rgba(0,0,0,0.7)', padding: '4px', borderRadius: '4px' }} title={r.domain_warning}>
+                          <Eye size={14} color="var(--brand-cyan)" />
                         </div>
                       )}
                     </div>
@@ -835,10 +956,7 @@ function LearnView() {
           ))}
         </div>
 
-        <p className="learn-disclaimer">
-          This is general information for Singapore, not legal advice. Rules
-          can change, so check the links above for the latest details.
-        </p>
+
       </section>
     </div>
   )
@@ -848,38 +966,25 @@ function LearnView() {
 /* ── Interactive Hero Demo ──────────────────────────────────── */
 function HeroDemo() {
   return (
-    <div className="hero-demo-container" style={{ perspective: '1200px', width: '100%', maxWidth: '800px', margin: '40px auto', height: '400px', position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+    <div className="hero-demo-container" style={{ perspective: '1000px', width: '100%', maxWidth: '800px', margin: '40px auto', height: '400px', position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
       
-      {/* Moving Trail Border Wrapper */}
+      {/* 3D Window Wrapper (Continues gently floating) */}
       <motion.div
-        animate={{ rotateY: [-5, 5, 10, -5], rotateX: [2, 5, 0, 2] }}
-        transition={{ duration: 8, repeat: Infinity, ease: "easeInOut" }}
+        animate={{ rotateY: [-3, 3, 5, -3], rotateX: [1, 3, 0, 1] }}
+        transition={{ duration: 10, repeat: Infinity, ease: "linear" }}
         style={{
           width: '100%', height: '100%', position: 'relative',
           transformStyle: 'preserve-3d',
-          borderRadius: 'var(--radius-lg)',
-          padding: '2px', // Space for the moving border
-          overflow: 'hidden'
+          willChange: 'transform'
         }}
       >
-        {/* The glowing conic gradient background that rotates */}
-        <motion.div
-          animate={{ rotate: [0, 360] }}
-          transition={{ duration: 4, repeat: Infinity, ease: "linear" }}
-          style={{
-            position: 'absolute', top: '-50%', left: '-50%', width: '200%', height: '200%',
-            background: 'conic-gradient(from 0deg, transparent 70%, var(--brand-cyan) 80%, var(--red) 100%)',
-            zIndex: 0
-          }}
-        />
-
-        {/* The actual inner window */}
         <div
           className="demo-window"
           style={{
             width: '100%', height: '100%', background: '#09090b',
-            borderRadius: 'calc(var(--radius-lg) - 2px)',
-            boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.8), inset 0 1px 0 rgba(255,255,255,0.1)', overflow: 'hidden',
+            borderRadius: 'var(--radius-lg)',
+            border: '1px solid rgba(255,255,255,0.1)',
+            boxShadow: '0 20px 40px -10px rgba(0, 0, 0, 0.5)', overflow: 'hidden',
             display: 'flex', flexDirection: 'column', position: 'relative', zIndex: 1
           }}
         >
@@ -898,15 +1003,17 @@ function HeroDemo() {
               
               <motion.button 
                 className="btn-primary" 
-                style={{ padding: '12px', fontSize: '14px', position: 'relative', overflow: 'hidden' }}
-                animate={{ scale: [1, 1, 0.92, 1, 1], background: ['var(--brand-cyan)', 'var(--brand-cyan)', '#1BA5A1', 'var(--brand-cyan)', 'var(--brand-cyan)'] }}
-                transition={{ duration: 4, repeat: Infinity, times: [0, 0.4, 0.45, 0.5, 1], ease: "easeInOut" }}
+                style={{ padding: '12px', fontSize: '14px', position: 'relative', overflow: 'hidden', willChange: 'transform' }}
+                initial={{ scale: 1, background: 'var(--brand-cyan)' }}
+                animate={{ scale: [1, 0.95, 1], background: ['var(--brand-cyan)', '#1BA5A1', 'var(--brand-cyan)'] }}
+                transition={{ duration: 0.2, delay: 1.1, ease: "easeInOut" }}
               >
                 Analyze Image
                 <motion.div 
-                  style={{ position: 'absolute', top: '50%', left: '50%', width: '100%', height: '100%', background: 'rgba(255,255,255,0.4)', borderRadius: '50%', x: '-50%', y: '-50%' }}
-                  animate={{ scale: [0, 0, 2, 0, 0], opacity: [0, 0, 1, 0, 0] }}
-                  transition={{ duration: 4, repeat: Infinity, times: [0, 0.45, 0.46, 0.6, 1] }}
+                  style={{ position: 'absolute', top: '50%', left: '50%', width: '100%', height: '100%', background: 'rgba(255,255,255,0.4)', borderRadius: '50%', x: '-50%', y: '-50%', willChange: 'transform, opacity' }}
+                  initial={{ scale: 0, opacity: 0 }}
+                  animate={{ scale: [0, 2], opacity: [0.8, 0] }}
+                  transition={{ duration: 0.4, delay: 1.1, ease: "easeOut" }}
                 />
               </motion.button>
               <div style={{ width: '100%', height: '8px', background: 'rgba(255,255,255,0.03)', borderRadius: '4px' }} />
@@ -916,9 +1023,10 @@ function HeroDemo() {
             {/* Fake Dashboard */}
             <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '16px' }}>
               <motion.div 
-                style={{ width: '100%', padding: '20px', background: 'rgba(254, 44, 85, 0.1)', borderRadius: 'var(--radius-md)', border: '1px solid rgba(254, 44, 85, 0.2)' }}
-                animate={{ opacity: [0, 0, 1, 1, 0], y: [10, 10, 0, 0, 10] }}
-                transition={{ duration: 4, repeat: Infinity, times: [0, 0.55, 0.65, 0.9, 1], ease: "easeOut" }}
+                style={{ width: '100%', padding: '20px', background: 'rgba(254, 44, 85, 0.1)', borderRadius: 'var(--radius-md)', border: '1px solid rgba(254, 44, 85, 0.2)', willChange: 'transform, opacity' }}
+                initial={{ opacity: 0, y: 15 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.4, delay: 1.4, ease: "easeOut" }}
               >
                 <div style={{ color: '#FE2C55', fontWeight: 'bold', fontSize: '14px', marginBottom: '8px' }}>Likely AI-Generated</div>
                 <div style={{ display: 'flex', justifyContent: 'space-between' }}>
@@ -942,24 +1050,31 @@ function HeroDemo() {
               width: '28px',
               height: '28px',
               pointerEvents: 'none',
-              filter: 'drop-shadow(0 4px 6px rgba(0,0,0,0.5))'
+              willChange: 'transform'
             }}
+            initial={{ x: '400px', y: '300px', scale: 1 }}
             animate={{ 
-              x: ['400px', '130px', '130px', '400px', '400px'],
-              y: ['300px', '180px', '180px', '300px', '300px'],
-              scale: [1, 1, 0.7, 1, 1]
+              x: ['400px', '130px', '130px', '130px', '400px'],
+              y: ['300px', '180px', '180px', '180px', '350px'],
+              scale: [1, 1, 0.75, 1, 1]
             }}
-            transition={{ duration: 4, repeat: Infinity, times: [0, 0.4, 0.45, 0.5, 1], ease: "easeInOut" }}
+            transition={{ 
+              duration: 1.5, 
+              delay: 0.5, 
+              times: [0, 0.33, 0.4, 0.46, 1], 
+              ease: "easeInOut" 
+            }}
           >
             <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
               <path d="m3 3 7.07 16.97 2.51-7.39 7.39-2.51L3 3z" fill="black" />
             </svg>
             
-            {/* Ripple Click Effect */}
+            {/* Native Ripple Click Effect */}
             <motion.div
-              style={{ position: 'absolute', top: '4px', left: '4px', width: '20px', height: '20px', border: '2px solid white', borderRadius: '50%' }}
-              animate={{ scale: [0, 0, 2.5, 0, 0], opacity: [0, 0, 0.8, 0, 0] }}
-              transition={{ duration: 4, repeat: Infinity, times: [0, 0.44, 0.45, 0.6, 1] }}
+              style={{ position: 'absolute', top: '4px', left: '4px', width: '20px', height: '20px', border: '2px solid white', borderRadius: '50%', willChange: 'transform, opacity' }}
+              initial={{ scale: 0, opacity: 0 }}
+              animate={{ scale: [0, 2.5], opacity: [0.8, 0] }}
+              transition={{ duration: 0.4, delay: 1.1 }}
             />
           </motion.div>
         </div>
@@ -975,7 +1090,7 @@ export default function App() {
   )
   const [view, setView] = useState('home')
   const [file, setFile] = useState(null)
-  const [checkpoint, setCheckpoint] = useState('aug')
+  const [checkpoint, setCheckpoint] = useState('baseline')
   const [quality, setQuality] = useState(95)
   const [result, setResult] = useState(null)
   const [status, setStatus] = useState('idle')
@@ -1177,17 +1292,16 @@ export default function App() {
       <div className="main-content-area" style={{ flex: 1, display: 'flex', flexDirection: 'column', position: 'relative' }}>
         <AnimatePresence mode="wait">
           {view === 'brief' && (
-            <motion.iframe
+            <motion.div
               key="brief"
-              src="/project-brief.html"
-              className="brief-frame"
-              title="Project Brief"
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -20 }}
-              transition={{ duration: 0.3, ease: 'easeInOut' }}
-              style={{ width: '100%', border: 'none', flex: 1 }}
-            />
+              transition={{ duration: 0.4, ease: 'easeInOut' }}
+              style={{ flex: 1, overflowY: 'auto' }}
+            >
+              <ProjectBrief />
+            </motion.div>
           )}
 
           
@@ -1444,11 +1558,18 @@ export default function App() {
                   >
                     {result.warning && (
                       <motion.div variants={{ hidden: { opacity: 0, y: 10 }, visible: { opacity: 1, y: 0 } }} className="warning-banner">
-                        <AlertTriangle size={20} /> 
+                        <AlertTriangle size={20} />
                         <span>{result.warning}</span>
                       </motion.div>
                     )}
-                    
+
+                    {result.domain_warning && (
+                      <motion.div variants={{ hidden: { opacity: 0, y: 10 }, visible: { opacity: 1, y: 0 } }} className="warning-banner info">
+                        <Eye size={20} />
+                        <span>{result.domain_warning}</span>
+                      </motion.div>
+                    )}
+
                     <motion.div variants={{ hidden: { opacity: 0, scale: 0.95 }, visible: { opacity: 1, scale: 1 } }} className={`card verdict-banner ${tone}`} style={{ position: 'relative' }}>
                       <div className={`verdict-icon ${tone}`}>
                         {isAI ? <Bot size={28} /> : <User size={28} />}
@@ -1556,6 +1677,18 @@ export default function App() {
             </motion.div>
           )}
         </AnimatePresence>
+
+        <footer style={{
+          textAlign: 'center', 
+          padding: '16px 24px', 
+          fontSize: '14px', 
+          fontWeight: '500',
+          color: 'var(--text-main)', 
+          borderTop: '1px solid var(--border)',
+          background: 'rgba(0,0,0,0.1)'
+        }}>
+          Team SIGSEGV - TikTok Techjam 2026
+        </footer>
       </div>
     </div>
   )
