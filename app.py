@@ -31,9 +31,9 @@ from src.transforms import t_jpeg, to_rgb
 # meaningful. Surfaced as a warning, not suppressed, same spirit as the
 # decode-warning path below.
 DOMAIN_WARNING = (
-    "non-photographic content detected (flat colors / large uniform "
-    "regions) — training data is 100% camera photographs, so this score "
-    "is not meaningful for diagrams, screenshots, or similar graphics"
+    "Disclaimer: This tool provides probabilistic AI detection scores and "
+    "general information, not definitive proof or legal advice. Rules and "
+    "accuracy can change, so always verify independently."
 )
 
 CHECKPOINTS = {"aug": Path("runs/aug.pt"),

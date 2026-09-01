@@ -17,9 +17,12 @@ import {
   Landmark,
   Phone,
   ExternalLink,
+  Zap,
+  ShieldCheck,
+  Activity,
   ChevronDown,
 } from 'lucide-react'
-import { motion, AnimatePresence } from 'framer-motion'
+import { motion, AnimatePresence, useScroll, useTransform } from 'framer-motion'
 import './index.css'
 
 /* ── Constants ──────────────────────────────────────────────── */
@@ -309,13 +312,437 @@ function Header({ theme, onToggleTheme, currentView, setView }) {
           </div>
         </div>
       </div>
-      <button className="theme-btn" onClick={onToggleTheme} title="Toggle Dark Mode">
-        {theme === 'dark' ? 'Light Mode' : 'Dark Mode'}
-      </button>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+        <button className="theme-btn" onClick={onToggleTheme} title="Toggle Dark Mode">
+          {theme === 'dark' ? 'Light Mode' : 'Dark Mode'}
+        </button>
+        <a href="https://github.com/anniketkumar/aigc-detect" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--text-dim)', display: 'flex', alignItems: 'center' }} title="View Source">
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-github"><path d="M15 22v-4a4.8 4.8 0 0 0-1-3.5c3 0 6-2 6-5.5.08-1.25-.27-2.48-1-3.5.28-1.15.28-2.35 0-3.5 0 0-1 0-3 1.5-2.64-.5-5.36-.5-8 0C6 2 5 2 5 2c-.3 1.15-.3 2.35 0 3.5A5.403 5.403 0 0 0 4 9c0 3.5 3 5.5 6 5.5-.39.49-.68 1.05-.85 1.65-.17.6-.22 1.23-.15 1.85v4"/><path d="M9 18c-4.51 2-5-2-7-2"/></svg>
+        </a>
+      </div>
     </div>
   )
 }
 
+
+
+
+/* ── TikTok Integration Mockup ──────────────────────────────────────── */
+function TikTokAnimatedMockup({ isPaused = false }) {
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '100%', height: '100%', gap: '64px', flexWrap: 'wrap' }}>
+      
+      {!isPaused && (
+        <div style={{ flex: '1 1 300px', maxWidth: '400px' }}>
+          <h2 style={{ fontSize: '32px', marginBottom: '24px', background: 'linear-gradient(90deg, var(--brand-cyan), var(--text-main))', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
+            Seamless Social Integration
+          </h2>
+          <p style={{ color: 'var(--text-dim)', fontSize: '16px', lineHeight: '1.6', marginBottom: '24px' }}>
+            ImageSignal is designed to run passively behind the scenes of major social platforms, normalizing millions of uploads without slowing down the feed.
+          </p>
+          <ul style={{ display: 'flex', flexDirection: 'column', gap: '16px', color: 'var(--text-main)' }}>
+            <li style={{ display: 'flex', gap: '16px', alignItems: 'center', background: 'rgba(255,255,255,0.02)', padding: '12px 16px', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.05)' }}>
+              <Scan color="var(--brand-cyan)" size={20} />
+              <span style={{ fontSize: '14px', fontWeight: '500' }}>Passive Scanning Pipeline</span>
+            </li>
+            <li style={{ display: 'flex', gap: '16px', alignItems: 'center', background: 'rgba(255,255,255,0.02)', padding: '12px 16px', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.05)' }}>
+              <Bot color="#FE2C55" size={20} />
+              <span style={{ fontSize: '14px', fontWeight: '500' }}>Automated Feed Tagging</span>
+            </li>
+            <li style={{ display: 'flex', gap: '16px', alignItems: 'center', background: 'rgba(255,255,255,0.02)', padding: '12px 16px', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.05)' }}>
+              <Activity color="#F5A623" size={20} />
+              <span style={{ fontSize: '14px', fontWeight: '500' }}>Forensic Transparency UI</span>
+            </li>
+          </ul>
+        </div>
+      )}
+
+      {/* Mobile Device Frame */}
+      <div style={{ 
+        width: '280px', height: '560px', background: '#000', borderRadius: '32px', 
+        border: '10px solid #222', position: 'relative', overflow: 'hidden',
+        boxShadow: '0 25px 50px -12px rgba(0,0,0,0.5)', flexShrink: 0
+      }}>
+        {/* Scrolling Feed Container */}
+        <motion.div 
+          style={{ width: '100%', height: '200%', display: 'flex', flexDirection: 'column' }}
+          animate={isPaused ? { y: '-50%' } : { y: ['0%', '0%', '-50%', '-50%'] }}
+          transition={{ duration: 8, times: [0, 0.15, 0.25, 1], ease: "easeInOut" }}
+        >
+          {/* Video 1 (Real) */}
+          <div style={{ width: '100%', height: '50%', position: 'relative', background: '#111' }}>
+            <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(45deg, #2a2a2a, #1a1a1a)' }} />
+            <div style={{ position: 'absolute', bottom: '40px', left: '16px', color: '#fff' }}>
+              <div style={{ fontWeight: 'bold', fontSize: '16px' }}>@skater_boi</div>
+              <div style={{ fontSize: '14px', marginTop: '4px' }}>Kickflip down the 12 stair! 🛹 🔥</div>
+            </div>
+          </div>
+          
+          {/* Video 2 (AI Generated) */}
+          <div style={{ width: '100%', height: '50%', position: 'relative' }}>
+            <div style={{ position: 'absolute', inset: 0, background: 'url(/demo.jpg) center/cover', opacity: 0.8 }} />
+            <div style={{ position: 'absolute', bottom: '40px', left: '16px', right: '80px', display: 'flex', flexDirection: 'column', gap: '8px', color: '#fff', textShadow: '0 1px 2px rgba(0,0,0,0.5)' }}>
+              <div style={{ fontWeight: 'bold', fontSize: '16px' }}>@ai_creator</div>
+              <div style={{ fontSize: '14px', lineHeight: '1.4' }}>Check out this amazing cyberpunk city I rendered! 🏙️🚀</div>
+              
+              <motion.div 
+                style={{ 
+                  background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(10px)', 
+                  border: '1px solid rgba(255,255,255,0.2)', borderRadius: '4px',
+                  padding: '6px 10px', display: 'flex', alignItems: 'center', gap: '6px',
+                  color: '#fff', width: 'fit-content', marginTop: '4px', transformOrigin: 'left center'
+                }}
+                animate={isPaused ? { scale: 1 } : { scale: [1, 1, 0.9, 1, 1] }}
+                transition={{ duration: 8, times: [0, 0.44, 0.45, 0.48, 1] }}
+              >
+                <Bot size={14} color="#25F4EE" />
+                <span style={{ fontSize: '12px', fontWeight: '500' }}>AI-Generated Image</span>
+                <ChevronDown size={14} style={{ opacity: 0.6 }} />
+              </motion.div>
+            </div>
+          </div>
+        </motion.div>
+
+        {/* Static Overlay */}
+        <div style={{ position: 'absolute', top: '32px', left: 0, right: 0, display: 'flex', justifyContent: 'center', gap: '16px', color: '#fff', fontWeight: 'bold', fontSize: '14px', textShadow: '0 1px 2px rgba(0,0,0,0.5)' }}>
+          <span style={{ opacity: 0.6 }}>Following</span>
+          <span>For You</span>
+        </div>
+
+        {/* AI Forensics Bottom Sheet */}
+        <motion.div
+          style={{ 
+            position: 'absolute', bottom: 0, left: 0, right: 0, 
+            background: '#111', borderRadius: '24px 24px 0 0', 
+            padding: '24px 20px', zIndex: 20, color: '#fff',
+            boxShadow: '0 -10px 40px rgba(0,0,0,0.8)',
+            borderTop: '1px solid rgba(255,255,255,0.1)'
+          }}
+          initial={{ y: '100%' }}
+          animate={isPaused ? { y: '0%' } : { y: ['100%', '100%', '0%', '0%'] }}
+          transition={{ duration: 8, times: [0, 0.48, 0.52, 1], ease: "easeInOut" }}
+        >
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
+            <h3 style={{ fontSize: '18px', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <ShieldCheck color="#25F4EE" size={20} /> Content Forensics
+            </h3>
+            <div style={{ background: 'rgba(255,255,255,0.1)', borderRadius: '50%', padding: '4px' }}>
+              <X size={16} />
+            </div>
+          </div>
+          
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            <div style={{ background: 'rgba(255,255,255,0.05)', padding: '16px', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.05)' }}>
+              <div style={{ fontSize: '12px', color: '#888', marginBottom: '4px' }}>ImageSignal Confidence</div>
+              <div style={{ display: 'flex', alignItems: 'end', gap: '8px' }}>
+                <span style={{ fontSize: '32px', fontWeight: 'bold', color: '#FE2C55', lineHeight: 1 }}>98.2%</span>
+                <span style={{ fontSize: '14px', color: '#FE2C55', paddingBottom: '4px' }}>Likely Synthetic</span>
+              </div>
+              <div style={{ marginTop: '12px', height: '4px', background: '#333', borderRadius: '2px', overflow: 'hidden' }}>
+                <div style={{ width: '98.2%', height: '100%', background: '#FE2C55' }} />
+              </div>
+            </div>
+          </div>
+        </motion.div>
+
+        {/* Touch Simulation Cursor */}
+        <motion.div
+          style={{
+            position: 'absolute', zIndex: 100, width: '40px', height: '40px',
+            pointerEvents: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center'
+          }}
+          animate={isPaused ? { opacity: 0 } : { 
+            opacity: [0, 0, 1, 1, 1, 0],
+            y: [500, 500, 300, 500, 500, 600],
+            x: [150, 150, 150, 150, 150, 150],
+            scale: [1, 1, 1, 0.8, 1, 1]
+          }}
+          transition={{ duration: 8, times: [0, 0.15, 0.25, 0.44, 0.46, 0.55], ease: "easeInOut" }}
+        >
+          <div style={{ width: '20px', height: '20px', background: 'rgba(255,255,255,0.5)', borderRadius: '50%', boxShadow: '0 0 10px rgba(255,255,255,0.5)' }} />
+          <motion.div
+            style={{ position: 'absolute', inset: 0, border: '2px solid rgba(255,255,255,0.8)', borderRadius: '50%' }}
+            animate={isPaused ? { opacity: 0 } : { scale: [0, 0, 2, 2], opacity: [0, 0.8, 0, 0] }}
+            transition={{ duration: 8, times: [0, 0.44, 0.48, 1] }}
+          />
+        </motion.div>
+      </div>
+    </div>
+  )
+}
+
+/* ── Browser Extension Mockup ──────────────────────────────────────── */
+function ExtensionMockup({ isPaused = false }) {
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '100%', height: '100%', gap: '64px', flexWrap: 'wrap-reverse' }}>
+      
+      {/* Browser Frame */}
+      <div style={{ 
+        width: '400px', height: '500px', background: 'var(--panel-bg)', borderRadius: '12px', 
+        border: '1px solid var(--border)', position: 'relative', overflow: 'hidden',
+        boxShadow: '0 25px 50px -12px rgba(0,0,0,0.5)', flexShrink: 0
+      }}>
+        {/* Browser Top Bar */}
+        <div style={{ height: '40px', background: 'rgba(255,255,255,0.03)', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', padding: '0 16px', gap: '8px' }}>
+          <div style={{ width: 10, height: 10, borderRadius: '50%', background: '#FE2C55' }} />
+          <div style={{ width: 10, height: 10, borderRadius: '50%', background: '#F5A623' }} />
+          <div style={{ width: 10, height: 10, borderRadius: '50%', background: '#25F4EE' }} />
+          <div style={{ flex: 1, height: '24px', background: 'rgba(255,255,255,0.05)', borderRadius: '4px', marginLeft: '16px' }} />
+          <Scan size={16} color="var(--brand-cyan)" style={{ marginLeft: '8px' }} />
+        </div>
+
+        {/* Webpage Content */}
+        <div style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+           <div style={{ width: '40%', height: '24px', background: 'rgba(255,255,255,0.1)', borderRadius: '4px' }} />
+           <div style={{ width: '100%', height: '12px', background: 'rgba(255,255,255,0.05)', borderRadius: '4px' }} />
+           <div style={{ width: '80%', height: '12px', background: 'rgba(255,255,255,0.05)', borderRadius: '4px' }} />
+           <div style={{ width: '100%', height: '200px', background: 'url(/demo.jpg) center/cover', borderRadius: '8px', marginTop: '16px' }} />
+        </div>
+
+        {/* Extension Popup */}
+        <motion.div
+          style={{ 
+             position: 'absolute', top: '50px', right: '16px', width: '260px', 
+             background: 'rgba(20,20,20,0.95)', backdropFilter: 'blur(20px)', borderRadius: '12px', 
+             border: '1px solid rgba(37, 244, 238, 0.3)', padding: '16px', zIndex: 10,
+             boxShadow: '0 20px 40px rgba(0,0,0,0.5)', willChange: 'transform, opacity'
+          }}
+          initial={{ opacity: 0, y: -20, scale: 0.95 }}
+          animate={isPaused ? { opacity: 1, y: 0, scale: 1 } : { opacity: [0, 0, 1, 1], y: [-20, -20, 0, 0], scale: [0.95, 0.95, 1, 1] }}
+          transition={{ duration: 8, times: [0, 0.2, 0.3, 1], ease: "easeOut" }}
+        >
+           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px', borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: '12px' }}>
+              <Scan size={18} color="var(--brand-cyan)" />
+              <strong style={{ fontSize: '14px' }}>ImageSignal Scanner</strong>
+           </div>
+           <motion.div 
+             initial={{ opacity: 0, height: 0 }}
+             animate={isPaused ? { opacity: 1, height: 'auto' } : { opacity: [0, 0, 1, 1], height: [0, 0, 'auto', 'auto'] }}
+             transition={{ duration: 8, times: [0, 0.4, 0.45, 1] }}
+             style={{ background: 'rgba(254, 44, 85, 0.1)', padding: '12px', borderRadius: '8px', border: '1px solid rgba(254, 44, 85, 0.2)' }}
+           >
+              <div style={{ fontSize: '11px', color: '#888', marginBottom: '4px' }}>Confidence Score</div>
+              <div style={{ display: 'flex', alignItems: 'end', gap: '8px' }}>
+                <span style={{ fontSize: '24px', fontWeight: 'bold', color: '#FE2C55', lineHeight: 1 }}>98.2%</span>
+              </div>
+           </motion.div>
+        </motion.div>
+        
+        {/* Fake Cursor Scanning */}
+        <motion.div
+          style={{ position: 'absolute', zIndex: 100, width: '24px', height: '24px' }}
+          animate={isPaused ? { opacity: 0 } : { x: ['300px', '300px', '200px', '200px'], y: ['400px', '400px', '250px', '250px'] }}
+          transition={{ duration: 8, times: [0, 0.1, 0.2, 1] }}
+        >
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="1.5"><path d="m3 3 7.07 16.97 2.51-7.39 7.39-2.51L3 3z" fill="black" /></svg>
+        </motion.div>
+      </div>
+
+      {!isPaused && (
+        <div style={{ flex: '1 1 300px', maxWidth: '400px' }}>
+          <h2 style={{ fontSize: '32px', marginBottom: '24px', background: 'linear-gradient(90deg, #F5A623, var(--text-main))', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
+            Browser Extension
+          </h2>
+          <p style={{ color: 'var(--text-dim)', fontSize: '16px', lineHeight: '1.6', marginBottom: '24px' }}>
+            Arm your moderation team and fact-checkers with instant insights. Our Chrome Extension scans images natively on any webpage with a single right-click.
+          </p>
+          <ul style={{ display: 'flex', flexDirection: 'column', gap: '16px', color: 'var(--text-main)' }}>
+            <li style={{ display: 'flex', gap: '16px', alignItems: 'center', background: 'rgba(255,255,255,0.02)', padding: '12px 16px', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.05)' }}>
+              <Scan color="var(--brand-cyan)" size={20} />
+              <span style={{ fontSize: '14px', fontWeight: '500' }}>Context Menu Integration</span>
+            </li>
+            <li style={{ display: 'flex', gap: '16px', alignItems: 'center', background: 'rgba(255,255,255,0.02)', padding: '12px 16px', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.05)' }}>
+              <Activity color="#FE2C55" size={20} />
+              <span style={{ fontSize: '14px', fontWeight: '500' }}>On-the-fly Analysis</span>
+            </li>
+          </ul>
+        </div>
+      )}
+
+    </div>
+  )
+}
+
+
+/* ── Automated Mockup Carousel ──────────────────────────────────────────── */
+function MockupCarousel() {
+  const [activeIndex, setActiveIndex] = useState(0);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setActiveIndex(prev => (prev + 1) % 3);
+    }, 8000); // 8 seconds per slide
+    return () => clearInterval(interval);
+  }, []);
+
+  return (
+    <div style={{ width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '24px 24px', background: 'transparent' }}>
+      
+      {/* Carousel Tab Selectors */}
+      <div style={{ display: 'flex', gap: '12px', marginBottom: '40px', background: 'rgba(255,255,255,0.03)', padding: '8px', borderRadius: '100px', border: '1px solid rgba(255,255,255,0.05)', flexWrap: 'wrap', justifyContent: 'center' }}>
+        <button 
+          onClick={() => setActiveIndex(0)} 
+          style={{ padding: '8px 20px', borderRadius: '100px', fontSize: '14px', fontWeight: '500', background: activeIndex === 0 ? 'var(--brand-cyan)' : 'transparent', color: activeIndex === 0 ? '#000' : 'var(--text-dim)', transition: 'all 0.2s' }}
+        >
+          Desktop Web App
+        </button>
+        <button 
+          onClick={() => setActiveIndex(1)} 
+          style={{ padding: '8px 20px', borderRadius: '100px', fontSize: '14px', fontWeight: '500', background: activeIndex === 1 ? 'var(--brand-cyan)' : 'transparent', color: activeIndex === 1 ? '#000' : 'var(--text-dim)', transition: 'all 0.2s' }}
+        >
+          Platform Integration
+        </button>
+        <button 
+          onClick={() => setActiveIndex(2)} 
+          style={{ padding: '8px 20px', borderRadius: '100px', fontSize: '14px', fontWeight: '500', background: activeIndex === 2 ? 'var(--brand-cyan)' : 'transparent', color: activeIndex === 2 ? '#000' : 'var(--text-dim)', transition: 'all 0.2s' }}
+        >
+          Browser Extension
+        </button>
+      </div>
+
+      {/* Carousel Viewport */}
+      <div style={{ width: '100%', maxWidth: '1000px', minHeight: '500px', position: 'relative', display: 'flex', justifyContent: 'center' }}>
+        <AnimatePresence mode="wait">
+          {activeIndex === 0 && (
+            <motion.div key="0" initial={{ opacity: 0, x: -50 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 50 }} transition={{ duration: 0.5 }} style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center' }}>
+               <HeroDemo />
+            </motion.div>
+          )}
+          {activeIndex === 1 && (
+            <motion.div key="1" initial={{ opacity: 0, x: -50 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 50 }} transition={{ duration: 0.5 }} style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center' }}>
+               <TikTokAnimatedMockup />
+            </motion.div>
+          )}
+          {activeIndex === 2 && (
+            <motion.div key="2" initial={{ opacity: 0, x: -50 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 50 }} transition={{ duration: 0.5 }} style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center' }}>
+               <ExtensionMockup />
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+      
+      {/* Progress Bar */}
+      <div style={{ width: '100px', height: '4px', background: 'rgba(255,255,255,0.1)', borderRadius: '2px', marginTop: '24px', overflow: 'hidden' }}>
+         <motion.div 
+           key={activeIndex}
+           initial={{ width: '0%' }}
+           animate={{ width: '100%' }}
+           transition={{ duration: 8, ease: "linear" }}
+           style={{ height: '100%', background: 'var(--brand-cyan)' }}
+         />
+      </div>
+
+    </div>
+  )
+}
+
+
+/* ── Project Brief View ──────────────────────────────────────────── */
+function ProjectBrief() {
+  return (
+    <div style={{ maxWidth: '1000px', margin: '0 auto', padding: '48px 24px', display: 'flex', flexDirection: 'column', gap: '64px' }}>
+      
+      {/* Header */}
+      <div style={{ textAlign: 'center' }}>
+        <h1 style={{ fontSize: '36px', marginBottom: '16px' }}>Project Architecture & Findings</h1>
+        <p style={{ color: 'var(--text-dim)', fontSize: '18px', maxWidth: '600px', margin: '0 auto' }}>
+          How ImageSignal achieves state-of-the-art synthetic image detection using CLIP, normalization pipelines, and compression forensics.
+        </p>
+      </div>
+
+      {/* Infographic: The Normalization Pipeline */}
+      <section>
+        <h2 style={{ fontSize: '24px', marginBottom: '24px', display: 'flex', alignItems: 'center', gap: '8px' }}><ShieldCheck color="var(--brand-cyan)" /> Closing the Leak Channels</h2>
+        <div className="card" style={{ padding: '32px', background: 'rgba(255,255,255,0.02)' }}>
+          <p style={{ color: 'var(--text-dim)', marginBottom: '32px' }}>
+            Traditional models cheat by learning metadata or container artifacts (e.g. AI images are PNGs, real are JPEGs). Our pipeline forces a strict canonical decode to close 12 of 13 known leak channels before the model ever sees the pixels.
+          </p>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '16px', justifyContent: 'space-between', flexWrap: 'wrap' }}>
+            <div style={{ flex: 1, padding: '20px', background: 'var(--panel-bg)', borderRadius: 'var(--radius-md)', border: '1px solid var(--border)', textAlign: 'center' }}>
+              <div style={{ color: '#FE2C55', fontWeight: 'bold', marginBottom: '8px' }}>Raw Input</div>
+              <div style={{ fontSize: '12px', color: 'var(--text-dim)' }}>Metadata, PNG/JPEG, ICC Profiles, Odd Geometry</div>
+            </div>
+            <div style={{ color: 'var(--brand-cyan)' }}>&rarr;</div>
+            <div style={{ flex: 1, padding: '20px', background: 'rgba(37, 244, 238, 0.05)', borderRadius: 'var(--radius-md)', border: '1px solid rgba(37, 244, 238, 0.2)', textAlign: 'center' }}>
+              <div style={{ color: 'var(--brand-cyan)', fontWeight: 'bold', marginBottom: '8px' }}>Canonical Decode</div>
+              <div style={{ fontSize: '12px', color: 'var(--text-dim)' }}>Strip Metadata, Crop Natively, Match JPEG Quality</div>
+            </div>
+            <div style={{ color: 'var(--brand-cyan)' }}>&rarr;</div>
+            <div style={{ flex: 1, padding: '20px', background: 'var(--panel-bg)', borderRadius: 'var(--radius-md)', border: '1px solid var(--border)', textAlign: 'center' }}>
+              <div style={{ color: 'var(--text-main)', fontWeight: 'bold', marginBottom: '8px' }}>Frozen CLIP Backbone</div>
+              <div style={{ fontSize: '12px', color: 'var(--text-dim)' }}>Scores pure visual semantic artifacts</div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Chart: TPR Spread */}
+      <section>
+        <h2 style={{ fontSize: '24px', marginBottom: '24px', display: 'flex', alignItems: 'center', gap: '8px' }}><Activity color="var(--orange)" /> The Operating-Point Spread</h2>
+        <div className="card" style={{ padding: '32px', background: 'rgba(255,255,255,0.02)' }}>
+          <p style={{ color: 'var(--text-dim)', marginBottom: '32px' }}>
+            Aggregate AUROC hides a massive spread across generators. At a 1% false-positive budget (crucial for moderation triage), the True Positive Rate (TPR) varies wildly. FLUX.1-dev remains the hardest to detect.
+          </p>
+          
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            <div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', fontSize: '14px' }}>
+                <span>MidJourney</span>
+                <span style={{ color: 'var(--brand-cyan)', fontWeight: 'bold' }}>88.6% TPR</span>
+              </div>
+              <div style={{ width: '100%', height: '12px', background: 'var(--panel-bg)', borderRadius: '6px', overflow: 'hidden' }}>
+                <motion.div initial={{ width: 0 }} animate={{ width: '88.6%' }} transition={{ duration: 1, delay: 0.2, ease: "easeOut" }} style={{ height: '100%', background: 'var(--brand-cyan)' }} />
+              </div>
+            </div>
+            
+            <div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', fontSize: '14px' }}>
+                <span>Average Generator</span>
+                <span style={{ color: '#F5A623', fontWeight: 'bold' }}>~75.0% TPR</span>
+              </div>
+              <div style={{ width: '100%', height: '12px', background: 'var(--panel-bg)', borderRadius: '6px', overflow: 'hidden' }}>
+                <motion.div initial={{ width: 0 }} animate={{ width: '75%' }} transition={{ duration: 1, delay: 0.4, ease: "easeOut" }} style={{ height: '100%', background: '#F5A623' }} />
+              </div>
+            </div>
+
+            <div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', fontSize: '14px' }}>
+                <span>FLUX.1-dev</span>
+                <span style={{ color: '#FE2C55', fontWeight: 'bold' }}>53.7% TPR</span>
+              </div>
+              <div style={{ width: '100%', height: '12px', background: 'var(--panel-bg)', borderRadius: '6px', overflow: 'hidden' }}>
+                <motion.div initial={{ width: 0 }} animate={{ width: '53.7%' }} transition={{ duration: 1, delay: 0.6, ease: "easeOut" }} style={{ height: '100%', background: '#FE2C55' }} />
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Limitations Grid */}
+      <section>
+        <h2 style={{ fontSize: '24px', marginBottom: '24px', display: 'flex', alignItems: 'center', gap: '8px' }}><Info color="var(--text-main)" /> Known Limitations</h2>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '24px' }}>
+          
+          <div className="card" style={{ padding: '24px', background: 'rgba(255,255,255,0.02)', borderTop: '2px solid #FE2C55' }}>
+            <h3 style={{ fontSize: '18px', marginBottom: '12px' }}>Non-Photographic Domains</h3>
+            <p style={{ color: 'var(--text-dim)', fontSize: '14px', lineHeight: '1.6' }}>
+              Training data is 100% camera photos. The model reliably scores rendered diagrams, UI chrome, and infographics as "AI-generated" because they lack camera noise. We use a <code>domain_guard</code> heuristic to warn users when flat graphics are uploaded.
+            </p>
+          </div>
+
+          <div className="card" style={{ padding: '24px', background: 'rgba(255,255,255,0.02)', borderTop: '2px solid #F5A623' }}>
+            <h3 style={{ fontSize: '18px', marginBottom: '12px' }}>Real Data Constraint</h3>
+            <p style={{ color: 'var(--text-dim)', fontSize: '14px', lineHeight: '1.6' }}>
+              810 real test images is the binding constraint for measuring significance, not the model. The TPR@5% gap improvement from augmentation is not statistically significant because the paired bootstrap CIs are wide at this N.
+            </p>
+          </div>
+
+        </div>
+      </section>
+
+    </div>
+  )
+}
 
 /* ── API Docs View ──────────────────────────────────────────── */
 
@@ -347,7 +774,7 @@ function ApiDocs() {
               <tr>
                 <td><code>checkpoint</code></td>
                 <td>String</td>
-                <td>Model checkpoint to use. Options: <code>aug</code> (default), <code>baseline</code>.</td>
+                <td>Model checkpoint to use. Options: <code>baseline</code> (default — scores higher on the organizers' Final Score formula), <code>aug</code>.</td>
               </tr>
               <tr>
                 <td><code>quality</code></td>
@@ -365,12 +792,13 @@ function ApiDocs() {
           <h3>Response</h3>
           <pre className="code-block">
 {`{
-  "checkpoint": "aug",
+  "checkpoint": "baseline",
   "quality": 95,
-  "clean_score": 0.054, 
-  "reencoded_score": 0.048, 
+  "clean_score": 0.054,
+  "reencoded_score": 0.048,
   "jpeg_kb": 124.5, // Only if fast_mode=false
   "warning": null,
+  "domain_warning": null, // Disclaimer text dynamically attached based on content constraints
   "clean_preview": "data:image/jpeg;base64,...", // Only if fast_mode=false
   "reencoded_preview": "data:image/jpeg;base64,...", // Only if fast_mode=false
   "ela_preview": "data:image/jpeg;base64,..." // Only if fast_mode=false
@@ -399,7 +827,7 @@ function ApiDocs() {
               <tr>
                 <td><code>checkpoint</code></td>
                 <td>String</td>
-                <td>Model checkpoint to use. Options: <code>aug</code> (default), <code>baseline</code>.</td>
+                <td>Model checkpoint to use. Options: <code>baseline</code> (default — scores higher on the organizers' Final Score formula), <code>aug</code>.</td>
               </tr>
             </tbody>
           </table>
@@ -411,12 +839,14 @@ function ApiDocs() {
     {
       "image_path": "DSC001.jpg",
       "pred": 0.054,
-      "warning": null
+      "warning": null,
+      "domain_warning": null
     },
     {
       "image_path": "screenshot.png",
       "pred": 0.982,
-      "warning": null
+      "warning": null,
+      "domain_warning": "Disclaimer: This tool provides probabilistic AI detection scores..."
     }
   ]
 }`}
@@ -523,7 +953,7 @@ function StressTestChart({ data }) {
 
 function BatchView() {
   const [files, setFiles] = useState([])
-  const [checkpoint, setCheckpoint] = useState('aug')
+  const [checkpoint, setCheckpoint] = useState('baseline')
   const [results, setResults] = useState(null)
   const [status, setStatus] = useState('idle')
   const [error, setError] = useState('')
@@ -670,6 +1100,11 @@ function BatchView() {
                       {r.warning && (
                         <div style={{ position: 'absolute', top: 8, right: 8, background: 'rgba(0,0,0,0.7)', padding: '4px', borderRadius: '4px' }} title={r.warning}>
                           <AlertTriangle size={14} color="var(--orange)" />
+                        </div>
+                      )}
+                      {r.domain_warning && (
+                        <div style={{ position: 'absolute', top: 8, left: 8, background: 'rgba(0,0,0,0.7)', padding: '4px', borderRadius: '4px' }} title={r.domain_warning}>
+                          <Eye size={14} color="var(--brand-cyan)" />
                         </div>
                       )}
                     </div>
@@ -832,11 +1267,129 @@ function LearnView() {
           ))}
         </div>
 
-        <p className="learn-disclaimer">
-          This is general information for Singapore, not legal advice. Rules
-          can change, so check the links above for the latest details.
-        </p>
+
       </section>
+    </div>
+  )
+}
+
+
+/* ── Interactive Hero Demo ──────────────────────────────────── */
+function HeroDemo({ isPaused = false }) {
+  return (
+    <div className="hero-demo-container" style={{ perspective: '1000px', width: '100%', maxWidth: '800px', margin: '40px auto', height: '400px', position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      
+      {/* 3D Window Wrapper (Continues gently floating) */}
+      <motion.div
+        animate={{ rotateY: [-3, 3, 5, -3], rotateX: [1, 3, 0, 1] }}
+        transition={{ duration: 10, repeat: Infinity, ease: "linear" }}
+        style={{
+          width: '100%', height: '100%', position: 'relative',
+          transformStyle: 'preserve-3d',
+          willChange: 'transform'
+        }}
+      >
+        <div
+          className="demo-window"
+          style={{
+            width: '100%', height: '100%', background: '#09090b',
+            borderRadius: 'var(--radius-lg)',
+            border: '1px solid rgba(255,255,255,0.1)',
+            boxShadow: '0 20px 40px -10px rgba(0, 0, 0, 0.5)', overflow: 'hidden',
+            display: 'flex', flexDirection: 'column', position: 'relative', zIndex: 1
+          }}
+        >
+          <div style={{ height: '32px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', padding: '0 16px', gap: '8px', background: 'rgba(255,255,255,0.02)' }}>
+            <div style={{ width: 10, height: 10, borderRadius: '50%', background: '#FE2C55' }} />
+            <div style={{ width: 10, height: 10, borderRadius: '50%', background: '#F5A623' }} />
+            <div style={{ width: 10, height: 10, borderRadius: '50%', background: '#25F4EE' }} />
+          </div>
+          
+          <div style={{ display: 'flex', flex: 1, padding: '24px', gap: '24px' }}>
+            {/* Fake Sidebar */}
+            <div style={{ width: '30%', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              <div style={{ width: '100%', height: '120px', background: 'rgba(255,255,255,0.03)', borderRadius: 'var(--radius-md)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                 <ImageIcon color="var(--text-dim)" size={32} />
+              </div>
+              
+              <motion.button 
+                className="btn-primary" 
+                style={{ padding: '12px', fontSize: '14px', position: 'relative', overflow: 'hidden', willChange: 'transform' }}
+                initial={{ scale: 1, background: 'var(--brand-cyan)' }}
+                animate={{ scale: [1, 0.95, 1], background: ['var(--brand-cyan)', '#1BA5A1', 'var(--brand-cyan)'] }}
+                transition={{ duration: 0.2, delay: 1.1, ease: "easeInOut" }}
+              >
+                Analyze Image
+                <motion.div 
+                  style={{ position: 'absolute', top: '50%', left: '50%', width: '100%', height: '100%', background: 'rgba(255,255,255,0.4)', borderRadius: '50%', x: '-50%', y: '-50%', willChange: 'transform, opacity' }}
+                  initial={{ scale: 0, opacity: 0 }}
+                  animate={{ scale: [0, 2], opacity: [0.8, 0] }}
+                  transition={{ duration: 0.4, delay: 1.1, ease: "easeOut" }}
+                />
+              </motion.button>
+              <div style={{ width: '100%', height: '8px', background: 'rgba(255,255,255,0.03)', borderRadius: '4px' }} />
+              <div style={{ width: '80%', height: '8px', background: 'rgba(255,255,255,0.03)', borderRadius: '4px' }} />
+            </div>
+
+            {/* Fake Dashboard */}
+            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              <motion.div 
+                style={{ width: '100%', padding: '20px', background: 'rgba(254, 44, 85, 0.1)', borderRadius: 'var(--radius-md)', border: '1px solid rgba(254, 44, 85, 0.2)', willChange: 'transform, opacity' }}
+                initial={{ opacity: 0, y: 15 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.4, delay: 1.4, ease: "easeOut" }}
+              >
+                <div style={{ color: '#FE2C55', fontWeight: 'bold', fontSize: '14px', marginBottom: '8px' }}>Likely AI-Generated</div>
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <span style={{ fontSize: '12px', color: 'var(--text-dim)' }}>AI Signal Score</span>
+                  <span style={{ fontSize: '12px', color: '#FE2C55', fontWeight: 'bold' }}>92.4%</span>
+                </div>
+              </motion.div>
+              
+              <div style={{ display: 'flex', gap: '16px', flex: 1 }}>
+                <div style={{ flex: 1, background: 'rgba(255,255,255,0.02)', borderRadius: 'var(--radius-md)', border: '1px solid var(--border)' }} />
+                <div style={{ flex: 1, background: 'rgba(255,255,255,0.02)', borderRadius: 'var(--radius-md)', border: '1px solid var(--border)' }} />
+              </div>
+            </div>
+          </div>
+
+          {/* Animated Cursor */}
+          <motion.div
+            style={{
+              position: 'absolute',
+              zIndex: 100,
+              width: '28px',
+              height: '28px',
+              pointerEvents: 'none',
+              willChange: 'transform'
+            }}
+            initial={{ x: '400px', y: '300px', scale: 1 }}
+            animate={{ 
+              x: ['400px', '130px', '130px', '130px', '400px'],
+              y: ['300px', '180px', '180px', '180px', '350px'],
+              scale: [1, 1, 0.75, 1, 1]
+            }}
+            transition={{ 
+              duration: 1.5, 
+              delay: 0.5, 
+              times: [0, 0.33, 0.4, 0.46, 1], 
+              ease: "easeInOut" 
+            }}
+          >
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+              <path d="m3 3 7.07 16.97 2.51-7.39 7.39-2.51L3 3z" fill="black" />
+            </svg>
+            
+            {/* Native Ripple Click Effect */}
+            <motion.div
+              style={{ position: 'absolute', top: '4px', left: '4px', width: '20px', height: '20px', border: '2px solid white', borderRadius: '50%', willChange: 'transform, opacity' }}
+              initial={{ scale: 0, opacity: 0 }}
+              animate={{ scale: [0, 2.5], opacity: [0.8, 0] }}
+              transition={{ duration: 0.4, delay: 1.1 }}
+            />
+          </motion.div>
+        </div>
+      </motion.div>
     </div>
   )
 }
@@ -848,7 +1401,7 @@ export default function App() {
   )
   const [view, setView] = useState('home')
   const [file, setFile] = useState(null)
-  const [checkpoint, setCheckpoint] = useState('aug')
+  const [checkpoint, setCheckpoint] = useState('baseline')
   const [quality, setQuality] = useState(95)
   const [result, setResult] = useState(null)
   const [status, setStatus] = useState('idle')
@@ -1050,17 +1603,16 @@ export default function App() {
       <div className="main-content-area" style={{ flex: 1, display: 'flex', flexDirection: 'column', position: 'relative' }}>
         <AnimatePresence mode="wait">
           {view === 'brief' && (
-            <motion.iframe
+            <motion.div
               key="brief"
-              src="/project-brief.html"
-              className="brief-frame"
-              title="Project Brief"
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -20 }}
-              transition={{ duration: 0.3, ease: 'easeInOut' }}
-              style={{ width: '100%', border: 'none', flex: 1 }}
-            />
+              transition={{ duration: 0.4, ease: 'easeInOut' }}
+              style={{ flex: 1, overflowY: 'auto' }}
+            >
+              <ProjectBrief />
+            </motion.div>
           )}
 
           
@@ -1080,47 +1632,35 @@ export default function App() {
             <motion.div
               key="home"
               className="home-view"
-              initial={{ opacity: 0, scale: 0.98, filter: 'blur(5px)' }}
-              animate={{ opacity: 1, scale: 1, filter: 'blur(0px)' }}
-              exit={{ opacity: 0, scale: 0.98, filter: 'blur(5px)' }}
-              transition={{ duration: 0.4, ease: 'easeInOut' }}
-              style={{ flex: 1, display: 'flex', flexDirection: 'column' }}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.2 }}
+              style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}
             >
-              <div className="hero-section">
-                <h1 className="hero-title">Detect AI-Generated Images with <span>Confidence</span></h1>
-                <p className="hero-subtitle">
-                  Instantly analyze images to determine if they were synthetically generated or human-made, 
-                  using state-of-the-art model checkpointing and compression forensics.
-                </p>
-                <div className="hero-actions">
-                  <button 
-                    className="btn-large" 
-                    onClick={() => setView('transition')}
-                  >
-                    Start Analysis
-                  </button>
-                  <button 
-                    className="btn-secondary"
-                    onClick={() => setView('brief')}
-                  >
-                    Read the Brief
-                  </button>
+              <div style={{ flex: 1, display: 'flex', flexDirection: 'column', background: 'rgba(0,0,0,0.2)', borderTop: '1px solid rgba(255,255,255,0.05)' }}>
+                <div 
+                  style={{ 
+                    display: 'flex', flexDirection: 'column', 
+                    alignItems: 'center', justifyContent: 'center', textAlign: 'center',
+                    padding: '64px 24px 32px 24px', background: 'radial-gradient(circle at center, rgba(37, 244, 238, 0.05) 0%, transparent 70%)'
+                  }}
+                >
+                  <h1 className="hero-title" style={{ fontSize: '42px', lineHeight: '1.1', maxWidth: '900px', margin: '0 auto', marginBottom: '16px' }}>
+                    Detect AI-Generated Images with <span>Confidence</span>
+                  </h1>
+                  <p className="hero-subtitle" style={{ fontSize: '16px', maxWidth: '600px', margin: '0 auto', marginBottom: '24px', color: 'var(--text-dim)' }}>
+                    Instantly analyze images to determine if they were synthetically generated or human-made, 
+                    using state-of-the-art model checkpointing and compression forensics.
+                  </p>
+                  <div className="hero-actions" style={{ display: 'flex', gap: '16px', justifyContent: 'center' }}>
+                    <button className="btn-large" onClick={() => setView('transition')}>Start Analysis</button>
+                    <button className="btn-secondary" onClick={() => setView('brief')}>Read the Brief</button>
+                  </div>
                 </div>
-              </div>
 
-              <div className="video-section">
-                <div className="video-mockup">
-                  <div className="mockup-header">
-                    <div className="mockup-dots">
-                      <div className="mockup-dot r"></div>
-                      <div className="mockup-dot y"></div>
-                      <div className="mockup-dot g"></div>
-                    </div>
-                  </div>
-                  <div className="mockup-body" onClick={() => alert("Video player would open here!")}>
-                    <PlayCircle size={64} className="play-icon" strokeWidth={1.5} />
-                    <span className="semibold">Watch Feature Overview</span>
-                  </div>
+                <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', paddingBottom: '48px' }}>
+                  <MockupCarousel />
                 </div>
               </div>
             </motion.div>
@@ -1329,11 +1869,18 @@ export default function App() {
                   >
                     {result.warning && (
                       <motion.div variants={{ hidden: { opacity: 0, y: 10 }, visible: { opacity: 1, y: 0 } }} className="warning-banner">
-                        <AlertTriangle size={20} /> 
+                        <AlertTriangle size={20} />
                         <span>{result.warning}</span>
                       </motion.div>
                     )}
-                    
+
+                    {result.domain_warning && (
+                      <motion.div variants={{ hidden: { opacity: 0, y: 10 }, visible: { opacity: 1, y: 0 } }} className="warning-banner info">
+                        <Eye size={20} />
+                        <span>{result.domain_warning}</span>
+                      </motion.div>
+                    )}
+
                     <motion.div variants={{ hidden: { opacity: 0, scale: 0.95 }, visible: { opacity: 1, scale: 1 } }} className={`card verdict-banner ${tone}`} style={{ position: 'relative' }}>
                       <div className={`verdict-icon ${tone}`}>
                         {isAI ? <Bot size={28} /> : <User size={28} />}
@@ -1441,6 +1988,18 @@ export default function App() {
             </motion.div>
           )}
         </AnimatePresence>
+
+        <footer style={{
+          textAlign: 'center', 
+          padding: '16px 24px', 
+          fontSize: '14px', 
+          fontWeight: '500',
+          color: 'var(--text-main)', 
+          borderTop: '1px solid var(--border)',
+          background: 'rgba(0,0,0,0.1)'
+        }}>
+          Team SIGSEGV - TikTok Techjam 2026
+        </footer>
       </div>
     </div>
   )
