@@ -38,11 +38,13 @@ DOMAIN_WARNING = (
 
 CHECKPOINTS = {"aug": Path("runs/aug.pt"),
                "baseline": Path("runs/baseline.pt")}
-# baseline outscores aug on the organizers' Final Score formula
+# baseline outscores aug on the composite Final Score
 # (0.5*AUC_clean + 0.5*AUC_robust) -- see README.md "Headline results".
 # aug stays selectable for the TPR@FPR comparison story, but baseline is
-# the checkpoint we'd actually submit, so it's the default when a caller
-# (including the extension) doesn't pick one explicitly.
+# the checkpoint this project ships, so it's the default when a caller
+# (including the extension) doesn't pick one explicitly. runs/fusion.pt is
+# deliberately not offered here: it scores below baseline and costs an extra
+# per-image FFT + block-DCT pass (README.md "Limitations").
 DEFAULT_CHECKPOINT = "baseline"
 MAX_UPLOAD_BYTES = 25 * 1024 * 1024
 MAX_BATCH_FILES = 50

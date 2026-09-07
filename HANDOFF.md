@@ -1,5 +1,12 @@
 # Handoff — Phase 3
 
+> **Historical document, preserved as written.** This was the brief handed to
+> a collaborator when Phases 1–2 were done and no model existed yet. It is
+> kept unedited as a record of what was known at the time; its "Scope" and
+> test-count lines have since been overtaken by events (Phase 5 was reopened
+> and run; the suite is now 355 tests). See [README.md](README.md) for
+> current state.
+
 Deadline: ~31 Aug. Phases 1-2 done. No model exists yet.
 
 ## What exists
@@ -41,6 +48,10 @@ AUROC 1.0 on file size alone.
 ## Scope
 Phase 5 (artifact branch + fusion gate) is CUT. Do not reintroduce it.
 Test suite is frozen at 261 — no new tests unless something breaks.
+
+*(Superseded: Phase 5 was reopened after the aesthetic-probe measurement,
+built as `clip_freq_fusion`, and evaluated at full scale — it produced no
+measurable gain. See [WRITEUP.md](WRITEUP.md).)*
 
 ## Workflow
 Agent runs on your laptop. Training runs on Colab. Git is the bridge.

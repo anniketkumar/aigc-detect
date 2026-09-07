@@ -8,10 +8,11 @@ this fusion is expected to add information rather than duplicate it
 (``results/aesthetic_probe``'s near-zero Spearman correlation between CLIP's
 and a texture probe's per-generator difficulty ordering), and why fusion
 here means *concatenate-then-fit-one-linear-head*, not a separate gated
-network: the workshop's "go hybrid" insight is about the signal, not about
+network: the "go hybrid" argument is about the signal, not about
 architecture complexity, and ``LinearHead`` is already dimension-agnostic --
-reusing it costs nothing and keeps the trainable surface exactly as small
-as the Feasibility section already argues it should be.
+reusing it costs nothing and keeps the trainable surface as small as the
+frozen-probe design requires (532 trained parameters against the baseline's
+513).
 
 Registered as ``clip_freq_fusion`` in src/models/base.py so it drops into
 src/evaluate.py exactly like clip_linear:

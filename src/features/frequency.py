@@ -11,12 +11,14 @@ against the CLIP head's ordering -- statistically indistinguishable from
 zero correlation. CLIP and that probe are not finding the same generators
 hard, i.e. they carry different information. That is the actual precondition
 for concatenation-fusion to add signal instead of duplicating what the CLIP
-branch already reads (DEVPOST.md, Innovation section).
+branch already reads (WRITEUP.md, "Phase 5: a measured bet that didn't pay
+off" -- which also records that the precondition held and the branch still
+produced no measurable gain at full scale).
 
 That probe used spatial gradients as a *proxy* for "high-frequency content."
-This module is the real thing the workshop names explicitly: "Frequency
-artifacts: GAN/diffusion up-sampling leaves periodic patterns in the Fourier
-spectrum that cameras don't produce." A periodic up-sampling artifact shows
+This module reads the real thing instead: GAN/diffusion up-sampling leaves
+periodic patterns in the Fourier spectrum that cameras don't produce. A
+periodic up-sampling artifact shows
 up as one or two unusually strong *rings* in the radially-averaged FFT
 magnitude spectrum -- a real photograph's spectrum falls off smoothly with
 frequency and has no such peak. The radial-bin features below are built to

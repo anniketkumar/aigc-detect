@@ -102,7 +102,8 @@ failure to the exactly correct cell. That is the end-to-end check.
   Committing from the project would have staged the entire home directory.
   Initialised a repo at the project root instead; the stray `~/.git` is
   untouched and can be deleted.
-- §1 puts the project in `aigc-detect/`; it lives in `TikTok TechJam/`.
+- §1 puts the project in `aigc-detect/`; the working directory is named
+  differently. Cosmetic — nothing reads the directory name.
 - `configs/` is empty. Writing config files for models that do not exist yet
   would be speculative, and §13 forbids unmeasured complexity.
 
@@ -326,17 +327,88 @@ still traces to a source file for error analysis.
 
 ---
 
-## Q&A prep — dataset licensing, per source (`src/data/sources.py`)
+## Phase 5 — CLIP + frequency fusion (run landed: no measurable gain)
 
-Checked directly against each HF dataset card (2026-09-01), because the
-rules say "public or properly licensed" and going off the organizers'
-named list (SID_Set / CIFAKE / WildFake) onto community mirrors is a fair
-question to be asked live. Recorded here so the answer is "we checked, here
-is what we found," not an improvisation.
+Cut in Phase 3/4 on effort-to-payoff (§13's ranking puts fusion below the
+eval harness and augmentation). Reopened for one reason, not a hunch: the
+aesthetic probe measured the precondition. A two-feature, no-CLIP texture
+probe (`hf_energy`, `flat_frac`) reaches 0.6085 AUROC alone — weak, as
+expected — but its per-generator *difficulty ordering* correlates with the
+CLIP head's at Spearman rho = -0.143 (p = 0.760). Indistinguishable from
+zero: the two are not finding the same generators hard, so a concatenated
+frequency branch had a real chance of adding signal rather than duplicating
+it. That is the measurement that turned "cut on a guess" into "worth one
+run."
+
+Built as the cheapest thing that could test the claim:
+`src/features/frequency.py` (12 FFT radial-energy rings + 3 block-DCT band
+energies = 19 dims), concatenated onto the 512-dim CLIP embedding and
+scored by the *same* `LinearHead` — 531 dims in, 532 trained parameters.
+No change to `src/train.py`, which already reads embedding dim off the
+cached array's shape. Scale constants fixed and label-blind
+(`scripts/calibrate_frequency_scale.py`) so no scaler is fit on data and
+there's no new leakage surface to audit.
+
+**Result: nothing.** Same splits, same 19-cell grid, same seed:
+
+| | baseline | fusion |
+|---|---:|---:|
+| Clean AUROC | 0.9810 | 0.9786 |
+| Robust AUROC (family-balanced) | 0.9710 | 0.9692 |
+| Robustness gap | 0.0099 | 0.0095 |
+| Worst cell | 0.9484 | 0.9474 |
+| Final Score | **0.9760** | 0.9739 |
+
+Every column is a wash or marginally worse, and every difference is far
+inside the 0.0108 AUROC null SD at this N. The correct claim is *not*
+"fusion hurt" — it is "fusion changed nothing measurable." Val AUROC during
+training was 0.9890 (vs the baseline head's comparable number), so the head
+fit fine; the extra 19 dims simply carried nothing the linear head could
+use on top of CLIP.
+
+What this actually falsified: **non-redundant signal existing is not
+sufficient for a linear head to exploit it.** The rho = -0.143 measurement
+was a genuine precondition and it held — it just wasn't the whole
+condition. Worth remembering the next time a correlation check gets read as
+a green light.
+
+Two things bound how strong this null is, both worth stating rather than
+letting the table speak alone:
+
+- **Fusion was trained on clean features only.** The aug x fusion cell was
+  never run, and that's the combination with a mechanism behind it —
+  frequency features are precisely what degradation destroys, so they
+  should benefit most from degraded training data. One cache pass + one
+  17-second retrain; the cells already exist in `scripts/colab_setup.ipynb`.
+- **810 real test images.** Same binding constraint as every other
+  comparison here. This null is underpowered for exactly the reason the
+  Phase 4 result is.
+
+The smoke run (113 images, `results/fusion_smoke/`) had already scored
+fusion below baseline and that got written off at the time as toy-sample
+noise. It wasn't wrong to discount it — n=113 genuinely cannot decide this
+— but it pointed the right way, which is a mild argument for taking
+underpowered evidence a little more seriously when it is the only evidence
+available.
+
+Kept rather than reverted: `runs/fusion.pt` is committed and
+`results/fusion/` is a full grid, so the null is reproducible instead of a
+claim. Not wired into `predict.py`/`app.py` — it costs a per-image FFT +
+block-DCT pass and buys nothing.
+
+---
+
+## Dataset licensing, per source (`src/data/sources.py`)
+
+Checked directly against each HF dataset card (2026-09-01), because sources
+have to be public or properly licensed, and moving off the three standard
+reference datasets (SID_Set / CIFAKE / WildFake) onto community mirrors is
+a fair thing to be challenged on. Recorded here so the answer is "checked,
+here is what was found," not an improvisation.
 
 | Source | Repo | License found | Note |
 |---|---|---|---|
-| OpenImagesV7 (real), FLUX.1-dev (AI) | `saberzl/SID_Set` | **CC-BY-4.0**, stated | One of the organizers' three named datasets. Cleanest of the nine. Inherits COCO/OpenImages/Flickr30k CC-BY-4.0 obligations (attribution, share-alike on derived portions) — we attribute here and in README. |
+| OpenImagesV7 (real), FLUX.1-dev (AI) | `saberzl/SID_Set` | **CC-BY-4.0**, stated | One of the three standard reference datasets. Cleanest of the nine. Inherits COCO/OpenImages/Flickr30k CC-BY-4.0 obligations (attribution, share-alike on derived portions) — we attribute here and in README. |
 | Gemini-nano-banana (AI) | `bitmind/nano-banana` | **MIT** on the HF wrapper | Images are Gemini-2.5-Flash-Image-Preview output. The MIT tag covers BitMind's packaging, not necessarily Google's own terms on API-generated imagery — we have not separately confirmed Google's ToS permit this redistribution. **Weakest link if pressed.** |
 | Megalith-Flickr (real) | `bitmind/megalith-small` | **MIT** on the HF wrapper | Curated as "permissively-licensed Flickr" per the source's own description; we did not re-verify per-photo Flickr licenses beneath the wrapper. |
 | Aura (AI) | `bitmind/bm-aura-imagegen` | **none declared** | No LICENSE file, no card. Generated content from an open-source-adjacent model family; risk is "unlicensed mirror," not "restricted content." |
@@ -345,7 +417,7 @@ is what we found," not an improvisation.
 | Unsplash (real) | `wtcherr/unsplash_5k` | **none declared on the HF card** | Underlying content is Unsplash, whose own license (free for commercial/non-commercial use, no attribution required) is well-established independent of the wrapper's missing tag. Lowest risk of the "undeclared" group. |
 | **MidJourney (AI)** | `bitmind/JourneyDB` | **none declared on the mirror; the *original* JourneyDB dataset it mirrors is gated behind a custom, non-standard Terms of Usage** (not CC/MIT/Apache) | **The one to have a real answer for.** We used a community re-upload of a dataset whose upstream terms we have not read in full, held fully out of training (eval-only, per PLAN.md §4.3.1) same as the other two held-out generators. If asked: we'd say this generator's role is eval-only cross-generator generalization, not training data, and we'd swap it for a cleaner closed-source holdout (e.g. a small self-collected or clearly-licensed set) given more runway. |
 
-**The honest summary, if asked live:** the three organizer-named datasets
+**The honest summary:** the three standard reference datasets
 (SID_Set here) are unambiguous. The rest are public HF mirrors chosen for
 generator diversity per `sources.py`'s docstring reasoning, several of
 which don't carry their own license tag — that's a real gap in provenance

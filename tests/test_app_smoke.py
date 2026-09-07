@@ -65,7 +65,7 @@ def test_analyze_uses_canonical_pipeline(monkeypatch):
 
 def test_analyze_defaults_to_the_shipped_checkpoint(monkeypatch):
     """No caller (including the extension) should have to know that
-    'baseline' outscores 'aug' on the organizers' Final Score formula --
+    'baseline' outscores 'aug' on the composite Final Score --
     that's what CHECKPOINTS/DEFAULT_CHECKPOINT in app.py encode, so omitting
     the form field should already select it."""
     monkeypatch.setattr(A, "_get_model", lambda checkpoint: DummyModel())

@@ -133,7 +133,7 @@ actual usage in the Cloud Run metrics tab.
 ## Runtime/ops notes for a public demo
 
 - **No auth, no rate limiting** on `/api/analyze` / `/api/analyze-batch`.
-  Fine for a hackathon demo link; flag as a known limitation rather than
+  Fine for a public demo link; flag as a known limitation rather than
   building rate limiting today. `MAX_BATCH_FILES = 50` and
   `MAX_UPLOAD_BYTES = 25 MB` (`app.py:27-28`) already bound the worst case
   per request.
@@ -172,5 +172,8 @@ actual usage in the Cloud Run metrics tab.
   it's not on the deploy critical path.
 - **GPU/scaling**: current model is CPU-fine (frozen backbone, linear head,
   no training in the request path); no autoscaling story needed for a demo.
-- **Custom domain**: the platform-issued URL is enough for a submission
-  link; can be layered on later without touching the deploy itself.
+  This stays true only while `predict.py`/`app.py` serve `clip_linear` —
+  `clip_freq_fusion` adds a per-image FFT + block-DCT pass, and it isn't
+  wired in precisely because it bought no accuracy for that cost.
+- **Custom domain**: the platform-issued URL is enough for a demo link;
+  can be layered on later without touching the deploy itself.

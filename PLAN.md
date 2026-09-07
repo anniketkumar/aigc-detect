@@ -1,23 +1,31 @@
 # Robust AIGC Image Detection — Build Plan
 
-> This file is the spec. If you are a coding agent working in this repo, read this
-> top to bottom before writing code, and follow the phase order. Do not skip
-> Phase 1. Do not start Phase 5 until Phase 4's numbers are recorded.
+> This file is the spec, written up front and preserved as the original plan.
+> If you are a coding agent working in this repo, read this top to bottom
+> before writing code, and follow the phase order. Do not skip Phase 1. Do not
+> start Phase 5 until Phase 4's numbers are recorded.
+>
+> Sections 7 and 8 describe Phase 5 and Phase 6 *as originally scoped*. What
+> actually happened to each — Phase 5 cut, reopened, built as a
+> concatenate-and-one-linear-head fusion rather than the gated design below,
+> and finally reported as a null result; Phase 6 cut — is recorded in
+> [NOTES.md](NOTES.md) and [README.md](README.md). This file is not
+> retro-edited to match.
 
 ---
 
 ## 0. Context
 
-Hackathon problem statement 5: distinguish AI-generated images from authentic
-ones, with accuracy that **survives real-world post-processing** (compression,
-blur, resize, noise, color shifts, cropping).
+The problem: distinguish AI-generated images from authentic ones, with
+accuracy that **survives real-world post-processing** (compression, blur,
+resize, noise, color shifts, cropping).
 
 ### Hard constraints
 
 | Constraint | Value |
 |---|---|
 | Model size | **< 2B parameters total** (all branches combined) |
-| Compute | hackathon-scale; assume single GPU, possibly Colab T4/A100 |
+| Compute | single GPU; assume Colab T4/A100 |
 | Forbidden training data | the WildFake reference subset (COCO val2017 4998 imgs + DALL·E Advanced 8843 imgs) |
 | Output format | JSON, one entry per image: `image_path`, `pred` (float 0–1) |
 
@@ -393,8 +401,8 @@ logit = w * logit_artifact + (1 - w) * logit_semantic
 ```
 Log `w` at eval time. Plotting `w` against JPEG quality should show it sliding
 from artifact-trust to semantic-trust as quality drops. **That plot is the single
-best figure in your submission** — it proves the mechanism works, not just the
-metric.
+best figure this project could produce** — it proves the mechanism works, not
+just the metric.
 
 ### 7.4 Losses — `losses.py`
 ```
@@ -407,14 +415,15 @@ structural rather than incidental.
 
 ### 7.5 Parameter budget check
 Write a `scripts/param_count.py` that prints total trainable + frozen params and
-**asserts < 2B**. Put its output in the README. Judges will look for this.
+**asserts < 2B**. Put its output in the README — a reader should not have to
+take the parameter budget on trust.
 
 ---
 
 ## 8. Phase 6 — Calibration
 
-The deliverable asks for a *confidence score*. Most teams will submit raw
-uncalibrated logits. Don't.
+The deliverable asks for a *confidence score*. Raw uncalibrated logits are the
+easy way out. Don't.
 
 - `src/calibrate.py`: temperature scaling fit on the validation split.
 - Fit a **separate temperature per degradation bucket** (clean / mild / heavy,
@@ -445,8 +454,8 @@ Requirements:
 - deterministic: same input dir → same output
 - `tests/test_predict_smoke.py` runs it against a 10-image fixture dir containing at least one alpha PNG and one grayscale image
 
-Test it on a directory the model has never seen before submission. A crashing
-inference script is the most common way a good project scores badly.
+Test it on a directory the model has never seen before shipping. A crashing
+inference script is the most common way a good project reads as a bad one.
 
 ### 9.2 `app.py` — Gradio demo (this is the video)
 
@@ -483,16 +492,16 @@ Pull the highest-confidence mistakes from the test set and group them. Expect:
 - **False positives:** heavily compressed real photos, screenshots, digital art and illustration, over-filtered phone photos
 - **False negatives:** thumbnails, 4th-generation reposts, small crops of large fakes, generators absent from training
 
-Name the failure modes explicitly and state which you would fix first. Judges
-reward knowing your own weaknesses far more than they reward hiding them.
+Name the failure modes explicitly and state which you would fix first. Knowing
+your own weaknesses is worth far more than hiding them.
 
-## 12. Impact framing (20% of the score)
+## 12. Impact framing
 
 Do not pitch "detect fake images." Pitch **moderation triage**: a calibrated,
 degradation-aware score lets a platform choose a different operating point for a
 pristine upload than for a fourth-generation repost, and route uncertain cases to
 human review instead of hard-blocking. That is the difference between a
-classifier and a deployable system — and it doubles as your Feasibility answer.
+classifier and a deployable system.
 
 ---
 
@@ -512,7 +521,7 @@ classifier and a deployable system — and it doubles as your Feasibility answer
 
 ## 14. Open items
 
-- [x] Confirm submission deadline → **under 72 h from 2026-08-29.**
+- [x] Confirm time budget → **under 72 h from 2026-08-29.**
 - [x] Confirm available compute → **Google Colab**, ~50 GB disk. Strict
       linear probe; no backbone fine-tuning fits the budget.
 - [x] Decide which generators to hold out → **MidJourney, Gemini
@@ -522,4 +531,4 @@ classifier and a deployable system — and it doubles as your Feasibility answer
       so 19 GB is 4+ hours and there is only 9.5 GB free. On Colab it is
       minutes. `python -m scripts.bench_throughput` re-measures it there
       first.
-- [ ] Devpost draft, README, YouTube upload (allow more time than feels necessary — presentation + impact is 30% of the score)
+- [x] Long-form writeup, README, demo walkthrough (allow more time than feels necessary — how the work reads is most of what it is worth)

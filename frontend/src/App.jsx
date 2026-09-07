@@ -327,8 +327,8 @@ function Header({ theme, onToggleTheme, currentView, setView }) {
 
 
 
-/* ── TikTok Integration Mockup ──────────────────────────────────────── */
-function TikTokAnimatedMockup({ isPaused = false }) {
+/* ── Social Feed Integration Mockup ─────────────────────────────────── */
+function SocialFeedMockup({ isPaused = false }) {
   return (
     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '100%', height: '100%', gap: '64px', flexWrap: 'wrap' }}>
       
@@ -610,7 +610,7 @@ function MockupCarousel() {
           )}
           {activeIndex === 1 && (
             <motion.div key="1" initial={{ opacity: 0, x: -50 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 50 }} transition={{ duration: 0.5 }} style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center' }}>
-               <TikTokAnimatedMockup />
+               <SocialFeedMockup />
             </motion.div>
           )}
           {activeIndex === 2 && (
@@ -774,7 +774,7 @@ function ApiDocs() {
               <tr>
                 <td><code>checkpoint</code></td>
                 <td>String</td>
-                <td>Model checkpoint to use. Options: <code>baseline</code> (default — scores higher on the organizers' Final Score formula), <code>aug</code>.</td>
+                <td>Model checkpoint to use. Options: <code>baseline</code> (default — scores higher on the composite Final Score), <code>aug</code>.</td>
               </tr>
               <tr>
                 <td><code>quality</code></td>
@@ -827,7 +827,7 @@ function ApiDocs() {
               <tr>
                 <td><code>checkpoint</code></td>
                 <td>String</td>
-                <td>Model checkpoint to use. Options: <code>baseline</code> (default — scores higher on the organizers' Final Score formula), <code>aug</code>.</td>
+                <td>Model checkpoint to use. Options: <code>baseline</code> (default — scores higher on the composite Final Score), <code>aug</code>.</td>
               </tr>
             </tbody>
           </table>
@@ -1998,7 +1998,7 @@ export default function App() {
           borderTop: '1px solid var(--border)',
           background: 'rgba(0,0,0,0.1)'
         }}>
-          Team SIGSEGV - TikTok Techjam 2026
+          Image Signal — built by Aniket Kumar, Madhavan and Aryash Mullick
         </footer>
       </div>
     </div>

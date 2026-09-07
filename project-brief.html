@@ -448,9 +448,9 @@ footer a{color:var(--ink-soft);}
       start to finish — what each piece is for, what was tried and cut, and why — so anyone touching it,
       frontend included, can pick it up without re-deriving the reasoning.</p>
     <div class="meta-row">
-      <span class="chip accent">Status: submitted</span>
-      <span class="chip">7 phases planned · 5 shipped, 2 cut on purpose</span>
-      <span class="chip">324 tests</span>
+      <span class="chip accent">Status: complete</span>
+      <span class="chip">7 phases planned · 6 shipped, 1 cut on purpose</span>
+      <span class="chip">355 tests</span>
       <span class="chip">149.6M params, 513 trainable</span>
     </div>
   </div>
@@ -475,7 +475,7 @@ footer a{color:var(--ink-soft);}
       <div class="section-head">
         <span class="eyebrow">Start here</span>
         <h2>The metric you pick decides whether this looks solved</h2>
-        <p class="section-intro">Three findings, read together, are the actual submission — not the model.</p>
+        <p class="section-intro">Three findings, read together, are the actual result — not the model.</p>
       </div>
 
       <div class="tldr-grid">
@@ -506,7 +506,7 @@ footer a{color:var(--ink-soft);}
         <span class="eyebrow">Brief</span>
         <h2>The problem &amp; the constraints it had to fit</h2>
       </div>
-      <p class="section-intro">Hackathon problem statement 5: tell AI-generated images from authentic ones,
+      <p class="section-intro">The problem: tell AI-generated images from authentic ones,
       with accuracy that survives what actually happens to an image before a moderator sees it — re-compression,
       resizing, blur, noise, cropping, a repost of a repost.</p>
 
@@ -514,8 +514,8 @@ footer a{color:var(--ink-soft);}
         <table>
           <tr><th>Constraint</th><th>Value</th></tr>
           <tr><td>Model size</td><td class="mono">&lt; 2B parameters, all branches combined</td></tr>
-          <tr><td>Compute</td><td>Hackathon-scale — assume one GPU, Colab T4</td></tr>
-          <tr><td>Forbidden training data</td><td>WildFake reference subset (4,998 COCO val2017 + 8,843 DALL·E Advanced) — disqualification risk if leaked into train</td></tr>
+          <tr><td>Compute</td><td>Single GPU — assume Colab T4</td></tr>
+          <tr><td>Forbidden training data</td><td>WildFake reference subset (4,998 COCO val2017 + 8,843 DALL·E Advanced) — held out of training and enforced by a blocking test</td></tr>
           <tr><td>Output contract</td><td class="mono">JSON: {image_path, pred ∈ [0,1]} per image</td></tr>
         </table>
       </div>
@@ -574,7 +574,7 @@ footer a{color:var(--ink-soft);}
             <div class="tree-row"><span class="path">app.py</span><span class="why">A Gradio scratch demo for the pitch video only — upload an image, drag a JPEG-quality slider, watch the score move on the same code paths <code>predict.py</code> uses. Not the product's UI.</span></div>
             <div class="tree-row"><span class="path">runs/baseline.pt, runs/aug.pt</span><span class="why">The two trained linear heads (~4 KB each), committed so a fresh clone runs with no training or data download step.</span></div>
             <div class="tree-row"><span class="path">results/</span><span class="why">Every number in every doc is a committed, regeneratable file here — not a number transcribed once and left unverifiable.</span></div>
-            <div class="tree-row"><span class="path">tests/</span><span class="why">324 tests, including blocking tests that re-assert closed leaks and the WildFake exclusion — a future change can't silently reopen either.</span></div>
+            <div class="tree-row"><span class="path">tests/</span><span class="why">355 tests, including blocking tests that re-assert closed leaks and the WildFake exclusion — a future change can't silently reopen either.</span></div>
           </div>
         </div>
       </div>
@@ -585,8 +585,10 @@ footer a{color:var(--ink-soft);}
         <span class="eyebrow">Sequence — this order was enforced, not incidental</span>
         <h2>Build order, and what got cut</h2>
         <p class="section-intro">The plan's guardrail: <em>"do not reorder the phases — effort-to-payoff ranking
-        is eval harness &gt; augmentation &gt; calibration &gt; fusion gate &gt; backbone choice."</em> Phases 5
-        and 6 were named as cut, with the reasoning stated, rather than left to look like scope that ran out of time.</p>
+        is eval harness &gt; augmentation &gt; calibration &gt; fusion gate &gt; backbone choice."</em> Phase 6 was named
+        as cut, with the reasoning stated, rather than left to look like scope that ran out of time. Phase 5 was cut on
+        the same grounds, then reopened once a cheap measurement justified it — and then reported as a null result once
+        it was actually run.</p>
       </div>
 
       <div class="phase-list">
@@ -622,21 +624,26 @@ footer a{color:var(--ink-soft);}
             primary target and did not move the secondary one — reported as exactly that.</p>
           </div>
         </div>
-        <div class="phase cut">
+        <div class="phase done">
           <div class="phase-num">5</div>
           <div class="phase-body">
-            <div class="phase-body-head"><h4>Artifact branch + fusion gate</h4><span class="status-pill cut">Cut</span></div>
-            <p>A second model branch reading DCT/high-pass residuals, gated together with the CLIP branch. Cut once
-            Phases 1–4 showed the eval harness and the augmentation ablation mattered more than architecture at this
-            time and compute budget — it wouldn't have earned its own row in the ablation table.</p>
+            <div class="phase-body-head"><h4>CLIP + frequency fusion branch</h4><span class="status-pill done">Done — null result</span></div>
+            <p>A second feature source reading FFT radial-energy rings and block-DCT band energies, concatenated onto
+            the CLIP embedding and scored by the same linear head. Cut initially on effort-to-payoff, then reopened
+            when a two-feature texture probe showed its per-generator difficulty ordering was uncorrelated with CLIP's
+            (Spearman ρ = -0.143, p = 0.760) — the precondition for fusion adding signal rather than duplicating it.
+            Built, unit-tested, then trained and evaluated at full scale: <strong>Final Score 0.9739 against the
+            baseline's 0.9760</strong>. No gain, well inside the noise floor. A necessary precondition turned out not
+            to be a sufficient one, and that is reported as the finding rather than filed as "built, evaluation
+            pending."</p>
           </div>
         </div>
         <div class="phase cut">
           <div class="phase-num">6</div>
           <div class="phase-body">
             <div class="phase-body-head"><h4>Post-hoc calibration</h4><span class="status-pill cut">Cut</span></div>
-            <p>Per-bucket temperature scaling, so scores would read as real probabilities. Same reasoning as Phase 5 —
-            named as cut, and the consequence (scores are a sigmoid output, not a calibrated probability) is stated
+            <p>Per-bucket temperature scaling, so scores would read as real probabilities. Cut on effort-to-payoff and
+            named as cut, with the consequence (scores are a sigmoid output, not a calibrated probability) stated
             plainly in the limitations rather than glossed over.</p>
           </div>
         </div>
@@ -821,9 +828,9 @@ footer a{color:var(--ink-soft);}
       </div>
       <div class="limits">
         <div class="limit"><span class="mark">01</span><p><strong>810 real test images is the binding constraint</strong>, not the model. Every "not significant" result above is a statement about statistical power at this N — not a claim that the effect is zero. More held-out real images is the single highest-leverage next step.</p></div>
-        <div class="limit"><span class="mark">02</span><p><strong>FLUX.1-dev is the floor generator, and augmentation didn't move it</strong> — same rank, before and after Phase 4. <code>results/error_analysis/</code> looks at what it's actually missing.</p></div>
+        <div class="limit"><span class="mark">02</span><p><strong>FLUX.1-dev is the floor generator, and neither ablation moved it</strong> — same rank, before and after Phases 4 and 5. <code>results/error_analysis/</code> looks at what it's actually missing.</p></div>
         <div class="limit"><span class="mark">03</span><p><strong>No calibration layer.</strong> Scores are a trained sigmoid output, not a calibrated probability. <code>acc@0.5</code> should be read with that in mind; AUROC and TPR@FPR are threshold-free and don't have this problem.</p></div>
-        <div class="limit"><span class="mark">04</span><p><strong>No artifact branch, no degradation-awareness at inference time.</strong> The augmentation sampler computes a per-image degradation label that nothing currently consumes — kept because it was free, in case a fusion gate comes back in scope.</p></div>
+        <div class="limit"><span class="mark">04</span><p><strong>The fusion branch exists but doesn't ship at inference time.</strong> <code>runs/fusion.pt</code> is committed and fully evaluated, but it scores below the baseline it would replace, so wiring it into <code>predict.py</code>/<code>app.py</code> would cost a per-image FFT + block-DCT pass for no measured accuracy. It was also only trained on clean features — the aug × fusion combination was never run. The augmentation sampler separately computes a per-image degradation label that nothing consumes — kept because it was free, in case a degradation head comes back in scope.</p></div>
         <div class="limit"><span class="mark">05</span><p><strong>Three held-out generators, not an open set.</strong> "Unseen generator" means these three specifically, not a guarantee about every generator not represented in the eval.</p></div>
       </div>
     </section>
@@ -864,7 +871,7 @@ footer a{color:var(--ink-soft);}
       <p>Fuller detail than fits here: <a href="PLAN.md">PLAN.md</a> is the original spec, section by section.
       <a href="NOTES.md">NOTES.md</a> is the running decision log — what was tried, what failed, and why, phase by
       phase. <a href="HANDOFF.md">HANDOFF.md</a> is the phase-3 brief. <a href="README.md">README.md</a> and
-      <a href="DEVPOST.md">DEVPOST.md</a> are the short, submission-facing versions this page draws from.</p>
+      <a href="WRITEUP.md">WRITEUP.md</a> are the short and long-form versions this page draws from.</p>
     </footer>
 
   </main>

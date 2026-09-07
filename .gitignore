@@ -1,6 +1,6 @@
 # ---------------------------------------------------------------------------
 # Large binaries and derived artifacts. results/ IS committed (PLAN.md §13):
-# results/*/grid.csv, results/*/report.md and results/*.md are submission
+# results/*/grid.csv, results/*/report.md and results/*.md are the reported
 # deliverables and must stay readable on GitHub.
 # ---------------------------------------------------------------------------
 
@@ -24,6 +24,11 @@ data/forbidden/*
 runs/*
 results/**/cache/
 
+# Drive exports pulled back from Colab runs: raw feature caches (~150 MB of
+# .npy) plus a duplicate of results/. Only the results/ and runs/ files worth
+# keeping are copied out by hand; the export tree itself never lands in git.
+aigc-phase5/
+
 # Transformed-image cache written by src/evaluate.py --cache-dir
 .cache_transforms/
 
@@ -45,9 +50,12 @@ venv/
 .env
 .DS_Store
 
-# The two trained checkpoints ARE committed, same reasoning as data/forbidden/
+# The three trained checkpoints ARE committed, same reasoning as data/forbidden/
 # above: they're the linear head only (~4 KB each; the CLIP backbone downloads
 # from open_clip's own registry at runtime), and without them predict.py and
-# app.py need a Colab run before a judge can use either.
+# app.py need a Colab run before anyone can use either. runs/fusion.pt is the
+# Phase 5 head -- not wired into either entry point, committed so that
+# results/fusion/ can be reproduced.
 !runs/baseline.pt
 !runs/aug.pt
+!runs/fusion.pt
